@@ -1,0 +1,9 @@
+Hope everyone soaked up some serious summer vibes! Now, get ready to bask in the awesomeness of our phenomenal autumn and join us for a dazzling NYJavaSIG extravaganza, teaming up with our pals from the GSJUG. Our lovable
+nerd party is all about the release of Java 21, which brings a wave of mind-blowing new features that will completely transform how you write Java code.
+There are virtual threads and structured concurrency, where data manipulation becomes a breeze with enhanced efficiency and elegance. You'll see the magic of disappearing records, adding a touch of simplicity and
+sophistication to your codebase like never before. Brace yourself as we explore the mind-boggling possibilities of reversing collections, opening up a whole new realm of
+data manipulation and analysis. And if you are a new developer looking to enter the Java ecosystem, Java 21 has an upgraded "Hello World" experience carefully curated just for you.
+Join us at the joint NYJavaSIG/GSJUG meeting on Wed, September 13, hosted by BNY Mellon, for an unforgettable journey into the extraordinary realm of Java 21. JCP Executive Committee members from major
+enterprises (Amazon, Microsoft, BNYM, Red Hat, BellSoft, Microdoc, SouJava)  share valuable insights on adopting this groundbreaking release and reveal their favorite features.
+Let's toast the 25-year anniversary of the JCP and learn about the incredible new features in Java 21 together.   Please REGISTER for the in-person NYJavaSIG event ASAP!
+Special thanks to Bank of New York Mellon for hosting this month's meeting and sponsoring the pizza/refreshments.  Thank you for allowing us to share this meeting with the Java developer community.
