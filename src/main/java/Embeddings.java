@@ -1,6 +1,6 @@
 /*
  Test app to get embeddings from OpenAI's GPT service.
- This app uses the Java API from Theo Kanning.
+ This app uses the Java API from Theo Kanning.      -fdg
  */
 import com.theokanning.openai.embedding.Embedding;
 import com.theokanning.openai.embedding.EmbeddingRequest;
@@ -25,7 +25,7 @@ public class Embeddings {
             System.err.println("Cannot find OpenAI API key.  Your path to the properties is probably incorrect.");
             System.exit(1);
         }
-        String token = prop.getProperty("chatgpi.apikey");
+        String token = prop.getProperty("chatgpt.apikey");
         Scanner userinput;
 
         com.theokanning.openai.service.OpenAiService service = new OpenAiService(token);

@@ -7,6 +7,8 @@ import java.util.Locale;
 import java.util.Scanner;
 /*
  Parsing text stream using sentences for now.  -fdg
+ We might determine other parsing types in the future.
+    e.g., html tags, pdf strings, etc. -fdg
  */
 
 public class TokenParser {
