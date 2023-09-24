@@ -1,0 +1,24 @@
+OVERALL PLAN
+------------
+Assumptions: english text, OpenAI GPT, Theo Fanning's Java API to OpenAI, Milvus Vector DB
+
+1. Identify a docset.  This docset could be TXT, PDF, HTML, etc.
+2. If it isn't already, convert this docset into simple text. Optionally remove noise words to help with vector search in another step.
+3. Parse this docset into sentences (we'll use the granularity of sentences as our 'knowledge')
+4. Create embeddings for each sentence.  Use the embeddings service from OpenAI.
+5. Save the embeddings in the vector DB
+
+Application
+
+6. Get prompt from the user, ie, the "user-prompt"
+7. Create the embedding of this prompt using OpenAI.
+8. Use the semantic search capabilities of the vector DB for the text of the closest matches.  We'll use the top-10 matches.  This will be part of our prompt "preamble"
+9. Construct a new prompt [follow OpenAI prompt suggestions]:
+    Context + text-of-the-top-10-closest-matches + user-prompt
+    Context is how you want the model to respond.  See: https://help.openai.com/en/articles/6654000-best-practices-for-prompt-engineering-with-openai-api
+10. Send to OpenAI GPT using the appropriate model.
+11. Display result
+
+Test results.
+When results are not correct, we need to tweak the docset (step 1) and repeat everything.
+
