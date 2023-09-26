@@ -16,6 +16,7 @@ Application
 9. Construct a new prompt [follow OpenAI prompt suggestions]:
     Context + text-of-the-top-10-closest-matches + user-prompt
     Context is how you want the model to respond.  See: https://help.openai.com/en/articles/6654000-best-practices-for-prompt-engineering-with-openai-api
+    "super" prompt suggestion: "Answer the following query: {original query text} with the given context: {text chunks, sentences}"
 10. Send to OpenAI GPT using the appropriate model.
 11. Display result
 
