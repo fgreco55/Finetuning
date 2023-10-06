@@ -44,7 +44,8 @@ public class Embeddings {
                             .build();
 
                     List<Embedding> embeddings = service.createEmbeddings(embeddingRequest).getData();
-                    embeddings.forEach(System.out::println);
+                    System.out.println("There are " + embeddings.size() + " entries.");
+                    embeddings.forEach(System.out::println);    // seems to be 1536 elements of the embedding vector
                 }
             }
         }

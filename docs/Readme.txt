@@ -3,7 +3,7 @@ This project shows how to finetune an LLM to a specific doc set using Java tools
 There are 5 components to this project.
 
 1. The parser app takes a docset and converts it into separate sentences.  Using sentences now; we might switch to
-another type, eg, html tags, in the future.   [see TokenParser.java]
+another type, eg, html tags, in the future.   [see sentence parser in Utility.java]
 
 2. The embeddings app takes those separate strings (sentences) and gets their OpenAI embeddings in JSON format
 (presumably they use word2vec to generate the embeddings).     [see Embeddings.java]
@@ -20,6 +20,7 @@ For now, we are using Milvus since they have a decent Java API.    [see MilvusTe
 It puts those matches into the preamble of a prompt, adds the user request, and then asks the
 LLM (ChatGPT for now) for a completion.  This app could have cli options to optionally show the top matches, the user
 input, and the completion from the LLM.     [still TBD]
+    idea:  % pchat [file(s)] [directory(s)] [URL(s)]
 
 5. The end-user GUI app does the same as the CLI, except there's a nice JavaFX GUI.     [still TBD]
 

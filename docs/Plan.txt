@@ -4,8 +4,9 @@ Assumptions: english text, OpenAI GPT, Theo Fanning's Java API to OpenAI, Milvus
 
 1. Identify a docset.  This docset could be TXT, PDF, HTML, etc.
 2. If it isn't already, convert this docset into simple text. Optionally remove noise words to help with vector search in another step.
+   Start with a file.  Enhancement would be to allow multiple files or even folders or URLs
 3. Parse this docset into sentences (we'll use the granularity of sentences as our 'knowledge')
-4. Create embeddings for each sentence.  Use the embeddings service from OpenAI.
+4. Create embeddings for each sentence in the docset.  Use the embeddings service from OpenAI.
 5. Save the embeddings in the vector DB
 
 Application
@@ -23,3 +24,20 @@ Application
 Test results.
 When results are not correct, we need to tweak the docset (step 1) and repeat everything.
 
+Useful target CLI app would be:
+     % pchat [-a assistant-preamble] [file(s)] [directory(s)] [URL(s)]
+    Should design this as a server with a CLI/web/app front-end
+    A pchat server would be cool.  The CLI would just send commands to the server.  Then you could converse with the LLM (assistant)
+      and add more "knowledge" dynamically.  And it implies you can easily have multiple instances.
+    Eventually add a config file that identifies information sources, API keys, assistant preambles
+
+Useful preamble:
+   You are a helpful assistant for the NYJavaSIG.
+   Only answer questions about the NYJavaSIG and no other topic.
+   Do not answer any questions about any other topic.  Be polite and very helpful.
+
+Thoughts:
+   Create a Pchat java class that encapsulates LLM.java and VectorDB.java
+   Create a phatd server that surrounds Pchat.java and accepts commands, eg, loadfile, send, set model, etc
+     Then you can have several instances running... each potentially connected to different LLMs.
+   Create a "pchat" cli that connects to phatd for shell-level use.
