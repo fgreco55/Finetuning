@@ -1,3 +1,5 @@
+package App;
+
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.param.ConnectParam;
 import io.milvus.param.LogLevel;
