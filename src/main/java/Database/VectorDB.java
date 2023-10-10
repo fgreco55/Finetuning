@@ -1,6 +1,6 @@
-package Utilities;
+package Database;
 
-import io.milvus.client.MilvusClient;
+import Utilities.Utility;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
 import io.milvus.grpc.*;
@@ -229,7 +229,7 @@ public class VectorDB {
      svec - list of vectors, one list for each sentence
      vecsize - size of the vector array for each element of sentences list (only changes if embedding algo changes)
      ********************************************************************/
-    private void populate_collection(String coll,
+    public void insert_collection(String coll,
                                       List<Long> sentence_id, List<String> sentences, List<List<Float>> svec)
                                         throws VectorDBException {
         
@@ -267,13 +267,14 @@ public class VectorDB {
     }
 
     /************************************************************
-     population_ollection_dummy - just a convenience method for teting...
+     population_ollection_dummy - just a convenience method for testing...
+     ...should really be in the Utility class, not here.  Eventually remove -fdg
      ***********************************************************/
-    public void populate_collection_dummy(String coll, int numentries, int vecsize) {
+    private void populate_collection_dummy(String coll, int numentries, int vecsize) {
         System.out.println("dummy data... populate_collection() with " + numentries + " rows -------------------------");
         Utility util = new Utility();
         try {
-            populate_collection(coll,
+            insert_collection(coll,
                       util.createDummySentenceIds(numentries),
                       util.createDummySentences(numentries),
                       util.createDummyEmbeddings(numentries, vecsize));
@@ -566,6 +567,7 @@ public class VectorDB {
 
         System.out.println("Populating collection [" + COLLECTION_NAME + "]");
         vdb.populate_collection_dummy(COLLECTION_NAME, 200, OPENAI_VECSIZE);
+        vdb.populate_collection_dummy(COLLECTION_NAME, 200, OPENAI_VECSIZE);          //Should have 400 entries by this point
         vdb.flush_collection(COLLECTION_NAME);         // You need to flush the collection to storage!
 
         System.out.println("After populate_collection().  Rows: " + vdb.getCollectionRowCount(COLLECTION_NAME));

@@ -1,4 +1,4 @@
-package Utilities;
+package GenAI;
 
 class LLMCompletionException extends Exception {
     LLMCompletionException(String msg) {

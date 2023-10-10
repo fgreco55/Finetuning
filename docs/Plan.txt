@@ -30,6 +30,7 @@ Useful target CLI app would be:
     A pchat server would be cool.  The CLI would just send commands to the server.  Then you could converse with the LLM (assistant)
       and add more "knowledge" dynamically.  And it implies you can easily have multiple instances.
     Eventually add a config file that identifies information sources, API keys, assistant preambles
+    Need a "DataLoader" class that encapsulates VectorDB
 
 Useful preamble:
    You are a helpful assistant for the NYJavaSIG.
@@ -37,7 +38,10 @@ Useful preamble:
    Do not answer any questions about any other topic.  Be polite and very helpful.
 
 Thoughts:
-   Create a Pchat java class that encapsulates LLM.java and VectorDB.java
-   Create a phatd server that surrounds Pchat.java and accepts commands, eg, loadfile, send, set model, etc
+   Create a PChat java class that encapsulates LLM.java and VectorDB.java
+        or a DataLoader class that encapsulates VectorDB.java and a PChat class that has a Loader object
+   Create a phatd server that surrounds PChat.java and accepts commands, eg, loadfile, send, set model, set context, etc
      Then you can have several instances running... each potentially connected to different LLMs.
    Create a "pchat" cli that connects to phatd for shell-level use.
+   Once you had separate phatd servers, then you can host info servers per user
+   Separate Collections per user in one Vector DB [Bhupendra]     - need to investigate privacy/security aspects

@@ -4,8 +4,8 @@
 package App;
 
 import Utilities.Utility;
-import Utilities.VectorDB;
-import Utilities.VectorDBException;
+import Database.VectorDB;
+import Database.VectorDBException;
 
 import java.io.IOException;
 import java.util.List;
@@ -18,7 +18,6 @@ public class Tester {
     public static void main(String[] args) throws VectorDBException, IOException {
         VectorDB vdb = new VectorDB(DATABASE);
         Utility util = new Utility();
-        List<String> match;
 
         vdb.show_databases();
         if (vdb.collectionExists(COLLECTION) == true) {
@@ -42,6 +41,7 @@ public class Tester {
         /* Test simple query match  */
         vdb.queryDB(COLLECTION, "sentence_id > 25 and sentence_id < 75", 10L);
 
+        List<String> match;
         /* Test nearest semantic neighbors */
         match = vdb.searchDB(COLLECTION, "why does the NYJavaSIG exist?", 5);
         System.out.println("Finding nearest neighbors... START");
@@ -60,4 +60,21 @@ public class Tester {
         util.PDFfiletoSentences("./src/main/resources/testfile.pdf").forEach(System.out::println);
 
     }
+
+    /************************************************************
+     population_ollection_dummy - just a convenience method for testing...
+     ***********************************************************/
+        private void populate_collection_dummy(VectorDB vdb, String coll, int numentries, int vecsize) {
+            System.out.println("dummy data... insert_collection() with " + numentries + " rows -------------------------");
+            Utility util = new Utility();
+            try {
+                vdb.insert_collection(coll,
+                          util.createDummySentenceIds(numentries),
+                          util.createDummySentences(numentries),
+                          util.createDummyEmbeddings(numentries, vecsize));
+            } catch (VectorDBException vex) {
+                System.err.println("***ERROR: Cannot populate coll [" + coll + "] in database.");
+            }
+
+        }
 }

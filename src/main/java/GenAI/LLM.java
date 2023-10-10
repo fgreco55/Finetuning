@@ -1,4 +1,4 @@
-package Utilities;
+package GenAI;
 
 import com.theokanning.openai.completion.chat.*;
 import com.theokanning.openai.embedding.Embedding;
@@ -169,6 +169,10 @@ public class LLM {
                 results.add(emb.get(i));
         }
         return results;
+    }
+
+    public List<Double> getEmbedding(String str) {
+        return sendEmbeddingRequest(str);
     }
     
 
