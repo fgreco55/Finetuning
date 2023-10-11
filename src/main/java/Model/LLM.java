@@ -1,4 +1,4 @@
-package GenAI;
+package Model;
 
 import com.theokanning.openai.completion.chat.*;
 import com.theokanning.openai.embedding.Embedding;

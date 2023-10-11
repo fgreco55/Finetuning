@@ -268,7 +268,6 @@ public class VectorDB {
 
     /************************************************************
      population_ollection_dummy - just a convenience method for testing...
-     ...should really be in the Utility class, not here.  Eventually remove -fdg
      ***********************************************************/
     private void populate_collection_dummy(String coll, int numentries, int vecsize) {
         System.out.println("dummy data... populate_collection() with " + numentries + " rows -------------------------");
