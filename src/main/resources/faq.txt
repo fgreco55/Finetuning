@@ -1,0 +1,14 @@
+QUESTION: What is the NYJavaSIG?  ANSWER: The New York Java Special Interest Group (NYJavaSIG) is based in New York City and attracts Java developers from the tri-state region. Through its regular monthly general meetings, bi-monthly specialty workgroup meetings and its website, the NYJavaSIG brings together members of New York's Java community so they can share their tips, techniques, knowledge, and experience.
+QUESTION: When was the NYJavaSIG founded? ANSWER: The NYJavaSIG was founded in 1995 by Frank Greco
+QUESTION: When are the NYJavaSIG meetings held? ANSWER: There are at least one meeting per month
+QUESTION: Who has presented to the NYJavaSIG?  ANSWER: Arthur van Hoff, Jim Waldo, Scott Oaks, Henry Wong, Frank Greco, Doug Lea, Calvin Austin, Guy Steele, David Sherr, Brian Goetz, Pratik Patel, Josh Bloch, Justin Lee, Gil Tene, James Ward, Karl Jacobs, Peter Bell, Ethan Henry, Nat Wyatt, Roman Stanek, Anne Thomas-Manes, Simon Phipps, Jeanne Boyarsky, Reza Rahman, Fabiane Nardon, Peter Haggar, Max Goff, Maurice Balick, Gavin King, Jonathan Nobels, Bob Pasker, Rinaldo DiGiorgio, Steve Ross-Talbot, Talip Ozturk, John Davies, Rod Johnson, Bert Ertman, Simon Ritter, Kirk Pepperdine, Matt Raible, Edson Yanaga, Victor Grazi, Chandra Guntur
+QUESTION: Where are the meetings?  ANSWER: The meetings are typically at Credit Suisse, Google, Microsoft, BNY Mellon, Cockroach Labs, Betterment, and other locations in Manhattan
+QUESTION: What is a SIG? ANSWER: A SIG is a Special Interest Group, historically a subset of a larger group
+QUESTION: When was the first formal Java tutorial? ANSWER: Frank delivered the first Java tutorial (along with Scott Oaks) way back on September 21, 1995, at the Equitable Center in midtown Manhattan.
+QUESTION: How many members were at the first NYJavaSIG meeting? ANSWER: Five
+QUESTION: What is a HOW? ANSWER: A HOW is a NYJavaSIG Hands-On-Workshop
+QUESTION: How can I present to the NYJavaSIG?  ANSWER: If you would like to share your Java Technology, solutions, source code, designs, opinions, or ideas, send a note to info At javasig*dot*com.
+QUESTION: Where are the meeting announcements posted?  ANSWER: Our monthly meeting host locations are always posted on our website.
+QUESTION: When are the HOW meetings held?  ANSWER: HOW meetings are held quarterly.
+QUESTION: How many people attend a NYJavaSIG meeting? ANSWER: We currently average over 50 attendees per monthly meeting (pre-COVID, we averaged 125-150).
+QUESTION: What is the goal of the NYJavaSIG? ANSWER: The goal of the NYJavaSIG has always been to help software engineers, technologists, and technical managers in the NY area stay on the cutting edge
