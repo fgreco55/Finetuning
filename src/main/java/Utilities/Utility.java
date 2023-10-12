@@ -1,5 +1,5 @@
 /*********************************************************************
-                Utilities and Convenience methods
+ Utilities and Convenience methods
  ********************************************************************/
 package Utilities;
 
@@ -8,7 +8,9 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -36,23 +38,23 @@ public class Utility {
         return TexttoSentences(urlstring);
     }
 
-    public String TextfiletoText(String filename) {
+    public String TextfiletoString(String filename) {
         String bigString = (String) null;
 
-       try {
-           Path path = Path.of(filename);
-           byte[] bytes = Files.readAllBytes(path);
-           bigString = new String(bytes, StandardCharsets.UTF_8);
-       } catch (IOException e) {
-           System.err.println("***ERROR: " + e.getMessage());
-       }
+        try {
+            Path path = Path.of(filename);
+            byte[] bytes = Files.readAllBytes(path);
+            bigString = new String(bytes, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            System.err.println("***ERROR: " + e.getMessage());
+        }
 
-       System.out.println("Text of File:\n" + bigString);
-       return bigString;
+        //System.out.println("Text of File:\n" + bigString);
+        return bigString;
     }
 
     public List<String> TextfiletoSentences(String filename) {
-        return TexttoSentences(TextfiletoText(filename));
+        return TexttoSentences(TextfiletoString(filename));
     }
 
     public String PDFfiletoText(String filename) throws IOException {
@@ -63,12 +65,27 @@ public class Utility {
         return pdfText;
     }
 
-    public List<String> PDFfiletoSentences(String filename) throws IOException{
+    public List<String> PDFfiletoSentences(String filename) throws IOException {
         return TexttoSentences(PDFfiletoText(filename));
     }
 
+    public List<String> TextfiletoList(String filename) throws IOException {
+        List<String> lines = new ArrayList<>();
+
+        try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                lines.add(line);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return lines;
+    }
+    
     public List<String> TexttoSentences(String text) {
-        System.out.println("INPUT TEXT [" + text + "]");
+        //System.out.println("INPUT TEXT [" + text + "]");
 
         List<String> sentences = new ArrayList<>();
         // Create a BreakIterator for sentence tokenization
@@ -121,11 +138,20 @@ public class Utility {
         return embeddings;
     }
 
+    public String createBigString(List<String> sarr) {
+        String bigstr = "";
+        for (int i = 0; i < sarr.size(); i++) {
+            bigstr = bigstr.concat(sarr.get(i));
+            bigstr = bigstr.concat("\n");
+        }
+        return bigstr;
+    }
+
     /************************************************************
-          Create random strings just for simulation.
-            This data would normally come from a file.
-            Eventually this method isn't needed since we now
-            have List<String> TextfiletoSentences(filename) in this class.
+     Create random strings just for simulation.
+     This data would normally come from a file.
+     Eventually this method isn't needed since we now
+     have List<String> TextfiletoSentences(filename) in this class.
      ***********************************************************/
     public String randomString() {
         String[] universe = {
@@ -146,6 +172,25 @@ public class Utility {
         };
         Random random = new Random();
         return universe[random.nextInt(universe.length)];
+    }
+
+    public String currentDir() {
+        return System.getProperty("user.dir");
+    }
+
+    public static void main(String[] args) throws IOException {
+        Utility util = new Utility();
+
+        /* Test string->sentences parser */
+        System.out.println(util.TexttoSentences("hello world.  This is Frank.  Nice to hear from you."));
+        /* Test textfile->sentences parser */
+        util.TextfiletoSentences("./src/main/resources/testfile.txt").forEach(System.out::println);
+        /* Test URL scrape -> text */
+        System.out.println(util.URLtoText("http://www.javasig.com"));
+        /* Test URL scrape -> sentences */
+        util.URLtoSentences("https://www.espn.com").forEach(System.out::println);
+        /* Test pdf file -> sentences */
+        util.PDFfiletoSentences("./src/main/resources/testfile.pdf").forEach(System.out::println);
     }
 }
 

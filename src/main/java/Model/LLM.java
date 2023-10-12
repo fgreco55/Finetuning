@@ -147,7 +147,7 @@ public class LLM {
                 .stream(this.stream)
                 .build();
         List<ChatCompletionChunk> chunks = new ArrayList<>();
-        System.out.println("this.service: " + this.service.toString());
+        //System.out.println("this.service: " + this.service.toString());
 
         List<ChatCompletionChoice> choices = this.service.createChatCompletion(chatCompletionRequest).getChoices();
         for(ChatCompletionChoice s: choices) {
@@ -156,22 +156,30 @@ public class LLM {
         return results.get(0).toString();
     }
 
-    public List<Double> sendEmbeddingRequest(String msg) {
-        List<Double> results = new ArrayList<>();
+    public List<Float> sendEmbeddingRequest(String msg) {
+        List<Float> results = new ArrayList<>();
         EmbeddingRequest embeddingRequest = EmbeddingRequest.builder()
                 .model(this.model)
                 .input(Collections.singletonList(msg))
                 .build();
         List<Embedding> embedding = this.service.createEmbeddings(embeddingRequest).getData();
-        List<Double> emb = embedding.get(0).getEmbedding();
+        List<Double> emb = embedding.get(0).getEmbedding();     // OpenAI returns Doubles... Milvus wants Floats...
+        List<Float> newb = Double2Float(emb);
         int size =  embedding.get(0).getEmbedding().size();
         for (int i = 0; i < size; i++) {
-                results.add(emb.get(i));
+                results.add(newb.get(i));
         }
         return results;
     }
 
-    public List<Double> getEmbedding(String str) {
+    List<Float> Double2Float(List<Double> d) {
+        List<Float> flist = new ArrayList<>();
+        for(int i = 0; i < d.size(); i++) {
+            flist.add(d.get(i).floatValue());
+        }
+        return flist;
+    }
+    public List<Float> getEmbedding(String str) {
         return sendEmbeddingRequest(str);
     }
     
@@ -186,8 +194,8 @@ public class LLM {
         System.out.println("RESULT: " + s);
 
         myllm.setModel("text-embedding-ada-002");       // try embedding
-        List<Double> vec = myllm.sendEmbeddingRequest("hello world");
-        for(Double d: vec){
+        List<Float> vec = myllm.sendEmbeddingRequest("hello world");
+        for(Float d: vec){
             System.out.print(d + " ");
         }
         System.out.println();

@@ -6,11 +6,13 @@ import io.milvus.common.clientenum.ConsistencyLevelEnum;
 import io.milvus.grpc.*;
 import io.milvus.param.*;
 import io.milvus.param.collection.*;
+import io.milvus.param.dml.DeleteParam;
 import io.milvus.param.dml.InsertParam;
 import io.milvus.param.dml.QueryParam;
 import io.milvus.param.dml.SearchParam;
 import io.milvus.param.highlevel.collection.ListCollectionsParam;
 import io.milvus.param.highlevel.collection.response.ListCollectionsResponse;
+import io.milvus.param.highlevel.dml.response.DeleteResponse;
 import io.milvus.param.index.CreateIndexParam;
 import io.milvus.param.partition.CreatePartitionParam;
 import io.milvus.response.*;
@@ -30,6 +32,7 @@ public class VectorDB {
     static final String FIELD1 = "sentence_id";
     static final String FIELD2 = "sentence";            // actual sentence stored as meta-data for later retrieval
     static final String FIELD3 = "sentence_vector";
+    static final int MAX_SENTENCE_LENGTH = 1024;
     String host = MILVUS_HOST;
     int port = MILVUS_PORT;
     String database;
@@ -67,7 +70,8 @@ public class VectorDB {
                         .withPort(port)
                         .build()
         );
-        mc.setLogLevel(LogLevel.Debug);
+        //mc.setLogLevel(LogLevel.Debug);
+        mc.setLogLevel(LogLevel.Warning);
     }
 
     /************************************************************
@@ -134,19 +138,38 @@ public class VectorDB {
     /************************************************************
      Show all the databases in the server
      ***********************************************************/
-    public void show_databases() throws VectorDBException {
+    public List<String> show_databases() throws VectorDBException {
         check_init();
+        List<String> dbnames = new ArrayList<>();
+        String dbstr = "";
 
         R<ListDatabasesResponse> dbresponse = mc.listDatabases();
-        System.out.println("Databases in the server==========");
+        //System.out.println("Databases in the server==========");
         if (dbresponse.getStatus() != R.Status.Success.getCode()) {
             System.out.println(dbresponse.getMessage());
         } else {
-            System.out.println("***Success in listing databases...");
+            //System.out.println("***Success in listing databases...");
             for (int i = 0; i < dbresponse.getData().getDbNamesCount(); i++) {
-                System.out.println(dbresponse.getData().getDbNames(i));
+                dbstr = dbresponse.getData().getDbNames(i);
+                dbnames.add(dbstr);
+                //System.out.println(dbstr);
             }
         }
+        return dbnames;
+    }
+
+    /************************************************************
+     If database name exists in the server, return true.
+     ***********************************************************/
+    public boolean databaseExists(String dbname) throws VectorDBException {
+        List<String> databases = new ArrayList<>();
+        boolean exists = false;
+        databases = show_databases();
+        for (int i = 0; i < databases.size(); i++) {
+            if (databases.get(i).equalsIgnoreCase(dbname))
+                return true;
+        }
+        return exists;
     }
 
     /************************************************************
@@ -173,12 +196,12 @@ public class VectorDB {
         FieldType fieldType2 = FieldType.newBuilder()       // schema for num words in sentence (just an arbitrary field)
                 .withName(FIELD2)
                 .withDataType(DataType.VarChar)
-                .withMaxLength(1024)                       // VarChar requires "withMaxLength()
+                .withMaxLength(MAX_SENTENCE_LENGTH)         // VarChar requires "withMaxLength()
                 .build();
         FieldType fieldType3 = FieldType.newBuilder()       // schema for the actual vector
                 .withName(FIELD3)
                 .withDataType(DataType.FloatVector)
-                .withDimension(vecsize)                        // hard-code to 2 floats for this hello-world
+                .withDimension(vecsize)
                 .build();
 
         System.out.println("CREATING COLLECTION [" + coll + "]............");
@@ -246,9 +269,9 @@ public class VectorDB {
         fields.add(new InsertParam.Field(FIELD3, svec));
 
         System.out.println("INSERTING DATA INTO [" + coll + "]............");
-        System.out.println("sentence id [" + sentence_id.size() + "]");
-        System.out.println("sentences [" + sentences.size() + "]");
-        System.out.println("vector [" + svec.size() + "]");
+        System.out.println("     sentence id [" + sentence_id.size() + "]");
+        System.out.println("       sentences [" + sentences.size() + "]");
+        System.out.println("          vector [" + svec.size() + "]");
         System.out.println("vector embedding [" + svec.get(0).size() + "]");
 
         InsertParam insertParam = InsertParam.newBuilder()
@@ -268,6 +291,7 @@ public class VectorDB {
 
     /************************************************************
      population_ollection_dummy - just a convenience method for testing...
+     Need to delete this method SOON!
      ***********************************************************/
     private void populate_collection_dummy(String coll, int numentries, int vecsize) {
         System.out.println("dummy data... populate_collection() with " + numentries + " rows -------------------------");
@@ -282,6 +306,7 @@ public class VectorDB {
         }
 
     }
+
 
     /************************************************************
      load Collection - collection must be loaded into memory to work
@@ -347,6 +372,55 @@ public class VectorDB {
     }
 
     /************************************************************
+     insert_entry() - Insert an entry from a collection - NEED TO TEST
+     ***********************************************************/
+    public void insert_entry(String coll, String sent, List<Float> vec) {
+        List<Integer> ilist = new ArrayList<>();
+        ilist.add(1000);                            // arbitrary int
+        List<String> slist = new ArrayList<>();
+        slist.add(sent);
+
+        List<InsertParam.Field> fieldsInsert = new ArrayList<>();
+        fieldsInsert.add(new InsertParam.Field(FIELD1, ilist));
+        fieldsInsert.add(new InsertParam.Field(FIELD2, slist));
+        fieldsInsert.add(new InsertParam.Field(FIELD3, vec));
+
+        InsertParam param = InsertParam.newBuilder()
+                .withCollectionName(coll)
+                .withFields(fieldsInsert)
+                .build();
+
+        R<MutationResult> resp = mc.insert(param);
+        if (resp.getStatus() != R.Status.Success.getCode()) {
+            System.err.println("***ERROR:  Cannot insert single row.");
+        } else {
+            flush_collection(coll);
+        }
+    }
+
+
+    /************************************************************
+     delete_entry() - Delete an entry from a collection where there is a string match - NEED TO TEST
+     ***********************************************************/
+    public void delete_entry(String coll, String str) {
+        String deleteStr = "sentence = " + "\"" + str + "\"";
+
+        R<MutationResult> resp = mc.delete(
+                DeleteParam.newBuilder()
+                        .withCollectionName(coll)
+                        .withExpr(deleteStr)
+                        .build()
+        );
+
+        if (resp.getStatus() != R.Status.Success.getCode()) {
+            System.out.println(resp.getMessage());
+        } else {
+            System.out.println("Delete entry successful!");
+            flush_collection(coll);
+        }
+    }
+
+    /************************************************************
      Flush - data is sealed and then flushed to storage
      ***********************************************************/
     public void flush_collection(String coll) {
@@ -391,7 +465,7 @@ public class VectorDB {
         }
     }
 
-    long getCollectionRowCount(String coll) throws VectorDBException {
+    public long getCollectionRowCount(String coll) throws VectorDBException {
         long rows = 0;
 
         if (collectionExists(coll) != true) {
@@ -403,9 +477,9 @@ public class VectorDB {
                 .build();
         R<GetCollectionStatisticsResponse> cresponse = mc.getCollectionStatistics(param);
         if (cresponse.getStatus() != R.Status.Success.getCode()) {
-            System.out.println("**ERROR in getting collection row. " + cresponse.getMessage());
+            System.out.println("**ERROR in getting collection stats. " + cresponse.getMessage());
         } else {
-            System.out.println("Success in getting collection row!!");
+            System.out.println("Success in getting collection stats!!");
 
             GetCollStatResponseWrapper wrapper = new GetCollStatResponseWrapper(cresponse.getData());
             rows = wrapper.getRowCount();
@@ -476,7 +550,7 @@ public class VectorDB {
     public List<String> searchDB_using_targetvectors(String coll, List<List<Float>> vec, int max) {
         loadCollection(coll);
 
-        System.err.println("DEBUG: size of targetVectors: " + vec.size());
+        //System.err.println("DEBUG: size of targetVectors: " + vec.size());
         SearchParam param = SearchParam.newBuilder()
                 .withCollectionName(coll)
                 .withMetricType(MetricType.L2)
@@ -486,7 +560,6 @@ public class VectorDB {
                 .withConsistencyLevel(ConsistencyLevelEnum.EVENTUALLY)
                 .addOutField(FIELD2)                // IMPORTANT FIELD TO ADD!
                 //.withParams("{\"nprobe\":10,\"offset\":2, \"limit\":3}")
-                //.withParams("{\"nprobe\":10")
                 .build();
 
         R<SearchResults> resp = mc.search(param);
@@ -499,33 +572,11 @@ public class VectorDB {
         }
     }
 
-    /************************************************************
-     Semantic Search the DB - optionally use a filter
-     - currently restricted to "id, sentence, sentence-embedding-vector"
-     as FIELD1, FIELD2, and FIELD3
 
-     coll - Collection name
-     target - original prompt from user
-     max - maximum number of returned matches
-     ***********************************************************/
-
-    public List<String> searchDB(String coll, String target, int max) {
-        loadCollection(coll);
-        Random random = new Random();
-
-        List<List<Float>> targetVectors = new ArrayList<>(2);     // I only need 1 target embedding
-        List<Float> tv = new ArrayList<>(2);
-        for (int i = 0; i < OPENAI_VECSIZE; i++) {                        // **********  HARDCODED
-            tv.add(random.nextFloat());
-        }
-        targetVectors.add(tv);
-
-        return searchDB_using_targetvectors(coll, targetVectors, max);
-    }
 
     private List<String> getSearchData(R<SearchResults> resp, int size) {
         SearchResultsWrapper wrapper = new SearchResultsWrapper(resp.getData().getResults());
-        System.out.println("Search results:");
+        System.out.println("Search results (" + size + ") ");
         List<String> results = new ArrayList<>();
 
         for (int i = 0; i < size; i++) {
@@ -567,6 +618,7 @@ public class VectorDB {
         System.out.println("Populating collection [" + COLLECTION_NAME + "]");
         vdb.populate_collection_dummy(COLLECTION_NAME, 200, OPENAI_VECSIZE);
         vdb.populate_collection_dummy(COLLECTION_NAME, 200, OPENAI_VECSIZE);          //Should have 400 entries by this point
+
         vdb.flush_collection(COLLECTION_NAME);         // You need to flush the collection to storage!
 
         System.out.println("After populate_collection().  Rows: " + vdb.getCollectionRowCount(COLLECTION_NAME));
@@ -583,4 +635,30 @@ public class VectorDB {
         List<String> res = vdb.searchDB(COLLECTION_NAME, "why does the NYJavaSIG exist?", 5);
         res.forEach(System.out::println);
     }
+
+    /************************************************************
+         Semantic Search the DB - optionally use a filter
+         - currently restricted to "id, sentence, sentence-embedding-vector"
+         as FIELD1, FIELD2, and FIELD3
+
+         coll - Collection name
+         target - original prompt from user
+         max - maximum number of returned matches
+         ***********************************************************/
+
+        public List<String> searchDB(String coll, String target, int max) {
+            System.err.println("DUMMY CALL TO SearchDB().  Do NOT use this method... only for testing.");
+            loadCollection(coll);
+            Random random = new Random();
+
+            List<List<Float>> targetVectors = new ArrayList<>(2);     // I only need 1 target embedding
+            List<Float> tv = new ArrayList<>(2);
+            for (int i = 0; i < OPENAI_VECSIZE; i++) {                        // **********  HARDCODED
+                tv.add(random.nextFloat());
+            }
+            targetVectors.add(tv);
+
+            return searchDB_using_targetvectors(coll, targetVectors, max);
+        }
+
 }
