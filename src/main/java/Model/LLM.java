@@ -28,11 +28,14 @@ public class LLM {
     private String model;               // LLM model name (should ensure correct names)
                                         // "gpt-3.5-turbo" decent completion model
                                         // "text-embedding-ada-002" embedding model
+                                        // Should really have separate completion_model and embedding_model
     private int maxTokensRequested;     // how many tokens in completion
     private boolean stream = false;     // send results with SSE or not
     private float temperature;          // sampling temperature - how "creative" (higher is more) is the completion (0-2, default:1.0)
     private float top;                  // nucleus sampling % [alternative to temperature - (0-1, default:1.0)
     private int numCompletionsRequested;    // should typically be 1
+    private final static String EMBEDDING_MODEL = "text-embedding-ada-002";
+    private final static String COMPLETION_MODEL = "gpt-3.5-turbo";
 
     /************************************************************
      Constructor
@@ -171,7 +174,6 @@ public class LLM {
         }
         return results;
     }
-
     List<Float> Double2Float(List<Double> d) {
         List<Float> flist = new ArrayList<>();
         for(int i = 0; i < d.size(); i++) {
@@ -193,7 +195,7 @@ public class LLM {
         String s = myllm.sendCompletionRequest("user", "roses are red, violets are");
         System.out.println("RESULT: " + s);
 
-        myllm.setModel("text-embedding-ada-002");       // try embedding
+        myllm.setModel(EMBEDDING_MODEL);       // try embedding
         List<Float> vec = myllm.sendEmbeddingRequest("hello world");
         for(Float d: vec){
             System.out.print(d + " ");
@@ -226,5 +228,4 @@ public class LLM {
             default -> false;
         };
     }
-
 }

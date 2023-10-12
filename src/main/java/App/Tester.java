@@ -19,7 +19,8 @@ public class Tester {
     private final static String DEFAULT_CONFIG = "./src/main/resources/llm.properties";
     private final static String PREAMBLE = "./src/main/resources/preamble.txt";
     static final int OPENAI_VECSIZE = 1536;
-
+    private final static String EMBEDDING_MODEL = "text-embedding-ada-002";
+    private final static String COMPLETION_MODEL = "gpt-3.5-turbo";
 
     public static void main(String[] args) throws VectorDBException, IOException {
         Utility util = new Utility();
@@ -47,7 +48,7 @@ public class Tester {
         //vdb.show_collection_stats(COLLECTION_NAME);
         //System.out.println("Collection [" + COLLECTION_NAME + "] has [" + vdb.getCollectionRowCount(COLLECTION_NAME) + "] rows");
 
-        model.setModel("text-embedding-ada-002");       // try embedding
+        model.setModel(EMBEDDING_MODEL);       // try embedding
         List<String> sents = util.TextfiletoList("./src/main/resources/faq.txt");
         System.out.println("DEBUG: rows: " + sents.size());
         sents.forEach(System.out::println);
@@ -73,7 +74,19 @@ public class Tester {
         System.out.println("=============================================");
         System.out.println("=============================================");
         //String target = "Why does the NYJavaSIG exist?";
-        String target = "Has Matt Raible ever spoken at a NYJavaSIG meeting";
+        String target = "Has Chandra Guntur ever spoken at a NYJavaSIG meeting";
+        System.out.println("QUERY: " + target);
+        try {
+            System.out.println(mytest.getCompletion(model, vdb, target));
+        } catch (LLMCompletionException lx) {
+            System.err.println("***ERROR... Cannot complete user's query.");
+        }
+        System.out.println("=============================================");
+        System.out.println("=============================================");
+
+        System.out.println("=============================================");
+        System.out.println("=============================================");
+        target = "Can I take aspirin at a NYJavaSIG meeting?";
         System.out.println("QUERY: " + target);
         try {
             System.out.println(mytest.getCompletion(model, vdb, target));
@@ -92,8 +105,10 @@ public class Tester {
 
         // Create list of float arrays (list of vectors)... but only need one here
         List<List<Float>> smallvec = new ArrayList<>();
+        m.setModel(EMBEDDING_MODEL);
         smallvec.add(m.sendEmbeddingRequest(userquery));
-
+        
+        m.setModel(COMPLETION_MODEL);
         List<String> match;
         match = v.searchDB_using_targetvectors(COLLECTION_NAME, smallvec, 5);
         //System.out.println("Finding nearest neighbors for [" + userquery + "]... \nSTART-----------------------");
@@ -119,7 +134,7 @@ public class Tester {
 
     /************************************************************
      population_ollection_dummy - just a convenience method for testing...
-     ***********************************************************/
+     ***********************************************************//*
     private void populate_collection_dummy(VectorDB vdb, String coll, int numentries, int vecsize) {
         System.out.println("dummy data... insert_collection() with " + numentries + " rows -------------------------");
         Utility util = new Utility();
@@ -132,5 +147,5 @@ public class Tester {
             System.err.println("***ERROR: Cannot populate coll [" + coll + "] in database.");
         }
 
-    }
+    }*/
 }
