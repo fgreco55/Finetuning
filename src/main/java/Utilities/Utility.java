@@ -3,39 +3,50 @@
  ********************************************************************/
 package Utilities;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.mime.MultipartEntityBuilder;
+import org.apache.http.entity.mime.content.StringBody;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.http.entity.mime.content.FileBody;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
+import java.net.http.HttpRequest;
+import java.nio.ByteBuffer;
+import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.text.BreakIterator;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Random;
+import java.util.*;
+import java.util.concurrent.Flow;
 
 public class Utility {
+    public final static int MAX_WHISPER_FILESIZE = 25 * 1024 * 1024;
+    public final static int CHUNKSIZE_WHISPER = 20 * 1024 * 1024;
+
     public String URLtoText(String url) {
         try {
             // Connect to the URL and retrieve the HTML content
             Document document = Jsoup.connect(url).get();
             return document.text();
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("***ERROR:  Cannot access URL [" + url + "]. " + e.getMessage());
+            //e.printStackTrace();
             return (String) null;
         }
     }
 
     public List<String> URLtoSentences(String url) {
         String urlstring = URLtoText(url);
-        return TexttoSentences(urlstring);
+        return StringtoSentences(urlstring);
     }
 
     public String TextfiletoString(String filename) {
@@ -54,7 +65,7 @@ public class Utility {
     }
 
     public List<String> TextfiletoSentences(String filename) {
-        return TexttoSentences(TextfiletoString(filename));
+        return StringtoSentences(TextfiletoString(filename));
     }
 
     public String PDFfiletoText(String filename) throws IOException {
@@ -66,7 +77,7 @@ public class Utility {
     }
 
     public List<String> PDFfiletoSentences(String filename) throws IOException {
-        return TexttoSentences(PDFfiletoText(filename));
+        return StringtoSentences(PDFfiletoText(filename));
     }
 
     public List<String> TextfiletoList(String filename) throws IOException {
@@ -83,11 +94,14 @@ public class Utility {
 
         return lines;
     }
-    
-    public List<String> TexttoSentences(String text) {
+
+    public List<String> StringtoSentences(String text) {
         //System.out.println("INPUT TEXT [" + text + "]");
 
         List<String> sentences = new ArrayList<>();
+        if (text == null)
+            return sentences;
+        
         // Create a BreakIterator for sentence tokenization
         BreakIterator sentenceIterator = BreakIterator.getSentenceInstance(Locale.US);
         sentenceIterator.setText(text);
@@ -98,7 +112,7 @@ public class Utility {
         System.out.println("PARSED TEXT BY SENTENCE:");
         for (int end = sentenceIterator.next(); end != BreakIterator.DONE; start = end, end = sentenceIterator.next()) {
             String s = text.substring(start, end).trim();
-            System.out.println("* " + s);
+            //System.out.println("* " + s);
             sentences.add(s);
         }
         return sentences;
@@ -147,6 +161,28 @@ public class Utility {
         return bigstr;
     }
 
+    /*static class MultipartBodyPublisher implements HttpRequest.BodyPublisher {
+        private final byte[] data;
+        private final String boundary;
+
+        public MultipartBodyPublisher(byte[] data, String boundary) {
+            this.data = data;
+            this.boundary = boundary;
+        }
+
+        public long contentLength() {
+            return data.length;
+        }
+
+        public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
+            throw new UnsupportedOperationException("Not implemented");
+        }
+
+        public void writeTo(OutputStream out) throws IOException {
+            out.write(data);
+        }
+    }*/
+
     /************************************************************
      Create random strings just for simulation.
      This data would normally come from a file.
@@ -178,11 +214,111 @@ public class Utility {
         return System.getProperty("user.dir");
     }
 
-    public static void main(String[] args) throws IOException {
+    public String speechtotextXX(String apikey, String filename) throws IOException, InterruptedException {
+        String endpoint = "https://api.openai.com/v1/audio/transcriptions";
+        String model = "whisper-1";
+        String retvalue = "";     // return value;
+        File myfile = new File(filename);
+
+        CloseableHttpClient httpClient = HttpClients.createDefault();
+        try {
+            HttpPost request = new HttpPost(endpoint);
+            request.addHeader("Content-Type", "multipart/form-data");
+            request.addHeader("Authorization", "Bearer %s".formatted(apikey));
+
+            HttpEntity entity = MultipartEntityBuilder.create()
+                    .setContentType(ContentType.MULTIPART_FORM_DATA)
+                    .addPart("file", new FileBody(myfile, ContentType.DEFAULT_BINARY))
+                    .addPart("model", new StringBody(model, ContentType.DEFAULT_TEXT))
+                    .addPart("response_format", new StringBody("text", ContentType.DEFAULT_TEXT))
+                    //.addPart("prompt", new StringBody(prompt, ContentType.DEFAULT_TEXT))
+                    .build();
+
+            request.setEntity(entity);
+            CloseableHttpResponse response = httpClient.execute(request);
+
+            try {
+                System.out.println("Response Code : " + response.getStatusLine().getStatusCode());
+                HttpEntity responseEntity = response.getEntity();
+                if (responseEntity != null) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(responseEntity.getContent()));
+                    String line;
+                    StringBuilder result = new StringBuilder();
+                    while ((line = reader.readLine()) != null) {
+                        result.append(line);
+                    }
+                    retvalue = String.valueOf(result);
+                    System.out.println("Response Body : " + result);
+                }
+            } finally {
+                response.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                httpClient.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return retvalue;
+    }
+
+    public List<Float> Double2Float(List<Double> d) {
+        List<Float> flist = new ArrayList<>();
+        for (int i = 0; i < d.size(); i++) {
+            flist.add(d.get(i).floatValue());
+        }
+        return flist;
+    }
+    /************************************************************
+     *    getConfigProperties()
+     ***********************************************************/
+    public Properties getConfigProperties(String fname) throws IOException {
+        Properties prop = new Properties();
+        InputStream in = new FileInputStream(fname);
+
+        prop.load(in);
+
+        for (Enumeration e = prop.propertyNames(); e.hasMoreElements(); ) {
+            String key = e.nextElement().toString();
+            //System.out.println(key + " = " + prop.getProperty(key));
+        }
+        return prop;
+    }
+
+    /************************************************************
+     *    getApikey() - from a known place
+     ***********************************************************/
+    public String getApikey(String configfile) {
+        Properties prop = null;
+        try {
+            prop = getConfigProperties(configfile);
+        } catch (IOException iox) {
+            System.err.println("Cannot find config file [" + configfile + "]");
+        }
+        String token = prop.getProperty("llmservice.apikey");
+
+        if (token == (String) null) {           // Cannot continue without an API key from LLM provider
+            System.err.println("You need an API key from the LLM provider");
+            System.exit(100);
+        }
+        return token;
+    }
+
+    /************************************************************
+     *
+     *    main method - test
+     *
+     ***********************************************************/
+    public static void main(String[] args) throws IOException, InterruptedException {
         Utility util = new Utility();
 
+        String key = util.getApikey("/Users/fgreco/src/Finetuning/src/main/resources/llm.properties");
+
         /* Test string->sentences parser */
-        System.out.println(util.TexttoSentences("hello world.  This is Frank.  Nice to hear from you."));
+        System.out.println(util.StringtoSentences("hello world.  This is Frank.  Nice to hear from you."));
         /* Test textfile->sentences parser */
         util.TextfiletoSentences("./src/main/resources/testfile.txt").forEach(System.out::println);
         /* Test URL scrape -> text */

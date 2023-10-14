@@ -5,6 +5,8 @@ package App;
 
 import Model.LLM;
 import Model.LLMCompletionException;
+import Utilities.FinetuningUtils;
+import Utilities.SpeechTranscribe;
 import Utilities.Utility;
 import Database.VectorDB;
 import Database.VectorDBException;
@@ -12,6 +14,7 @@ import Database.VectorDBException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
 public class Tester {
     static final String MILVUS_DATABASE = "frankdb";    // default DB
@@ -22,36 +25,40 @@ public class Tester {
     private final static String EMBEDDING_MODEL = "text-embedding-ada-002";
     private final static String COMPLETION_MODEL = "gpt-3.5-turbo";
 
-    public static void main(String[] args) throws VectorDBException, IOException {
+    public static void main(String[] args) throws VectorDBException, LLMCompletionException, IOException {
         Utility util = new Utility();
-        VectorDB vdb = new VectorDB(MILVUS_DATABASE);
+        FinetuningUtils futil = new FinetuningUtils();
+        VectorDB vdb = new VectorDB(DEFAULT_CONFIG);
         LLM model = new LLM(DEFAULT_CONFIG);
+        String collection = vdb.getCollection();
+        String database = vdb.getDatabase();
+
+        System.out.println("coll: " + collection);
+        System.out.println("database: " + database);
 
         Tester mytest = new Tester();
 
         vdb.show_databases();
-        if (!vdb.databaseExists(MILVUS_DATABASE)) {
-            vdb.create_database(MILVUS_DATABASE);
+        if (!vdb.databaseExists(database)) {
+            vdb.create_database(database);
         }
         System.out.println("COLLECTIONS");
         vdb.show_collections();
-        if (vdb.collectionExists(COLLECTION_NAME) == true) {
-            System.out.println("collection [" + COLLECTION_NAME + "] does exist");
+        if (vdb.collectionExists(collection) == true) {
+            System.out.println("collection [" + collection + "] does exist");
         } else {
-            System.out.println("collection [" + COLLECTION_NAME + "] does NOT exist.  Creating...");
-            vdb.create_collection(COLLECTION_NAME, OPENAI_VECSIZE);
+            System.out.println("collection [" + collection + "] does NOT exist.  Creating...");
+            vdb.create_collection(collection, OPENAI_VECSIZE);
         }
 
-        System.out.println("Populating collection [" + COLLECTION_NAME + "] ====================================");
-
-        // now add sentences from testfile
-        //vdb.show_collection_stats(COLLECTION_NAME);
-        //System.out.println("Collection [" + COLLECTION_NAME + "] has [" + vdb.getCollectionRowCount(COLLECTION_NAME) + "] rows");
-
-        model.setModel(EMBEDDING_MODEL);       // try embedding
-        List<String> sents = util.TextfiletoList("./src/main/resources/faq.txt");
-        System.out.println("DEBUG: rows: " + sents.size());
-        sents.forEach(System.out::println);
+        /*****************************************************
+         *  Create some data to insert into the VDB collection
+         ****************************************************/
+        System.out.println("Populating collection [" + collection + "] ====================================");
+        String fname = "./src/main/resources/faq.txt";
+        List<String> sents = util.TextfiletoList(fname);
+        System.out.println("DEBUG: Textfile " + fname + " has rows: " + sents.size());
+        //sents.forEach(System.out::println);
 
         List<Long> ids = new ArrayList<>();
         List<List<Float>> veclist = new ArrayList<>();
@@ -59,70 +66,65 @@ public class Tester {
             String s = sents.get(i);
             List<Float> f = model.sendEmbeddingRequest(s);
             veclist.add(f);
-            ids.add(Long.parseLong(1000 + i + ""));
+            ids.add(Long.parseLong(1000 + i + ""));         // hard-coded for 1000... not a good idea -fdg
         }
         try {
-            vdb.insert_collection(COLLECTION_NAME, ids, sents, veclist);
-            System.out.println("[" + COLLECTION_NAME + "] has " + vdb.getCollectionRowCount(COLLECTION_NAME) + " rows.");
+            vdb.insert_collection(collection, ids, sents, veclist);
+            System.out.println("[" + collection + "] has " + vdb.getCollectionRowCount(collection) + " rows.");
         } catch (VectorDBException vex) {
             System.err.println("***ERROR: main() - Cannot insert collection");
         }
 
+        /*
+          Insert recording... drum roll...
+         */
+        SpeechTranscribe wt = new SpeechTranscribe(model.getApikey(), "whisper-1");
+        String s = wt.transcribe("/Users/fgreco/src/Finetuning/src/main/resources/20230913-nyjavasig-abstract.mp3");
+        futil.insertSentences(vdb, model, collection, s);
+
         /* Test simple query match  */
-        //vdb.queryDB(COLLECTION_NAME, "sentence_id > 10 and sentence_id < 30", 10L);
+        vdb.queryDB(COLLECTION_NAME, "sentence_id > 0 and sentence_id < 30000", 10L);
 
-        System.out.println("=============================================");
-        System.out.println("=============================================");
-        //String target = "Why does the NYJavaSIG exist?";
-        String target = "Has Chandra Guntur ever spoken at a NYJavaSIG meeting";
-        System.out.println("QUERY: " + target);
-        try {
-            System.out.println(mytest.getCompletion(model, vdb, target));
-        } catch (LLMCompletionException lx) {
-            System.err.println("***ERROR... Cannot complete user's query.");
-        }
-        System.out.println("=============================================");
-        System.out.println("=============================================");
+        Scanner userinput;
 
-        System.out.println("=============================================");
-        System.out.println("=============================================");
-        target = "Can I take aspirin at a NYJavaSIG meeting?";
-        System.out.println("QUERY: " + target);
-        try {
-            System.out.println(mytest.getCompletion(model, vdb, target));
-        } catch (LLMCompletionException lx) {
-            System.err.println("***ERROR... Cannot complete user's query.");
+        while (true) {
+            System.out.print("Query> ");
+            userinput = new java.util.Scanner(System.in);
+
+            if (userinput.hasNextLine()) {
+                String cmd = userinput.nextLine();
+                if (!cmd.isEmpty()) {
+                    try {
+                        System.out.println(mytest.getCompletion(model, vdb, collection, cmd));
+                    } catch (LLMCompletionException lx) {
+                        System.err.println("***ERROR... Cannot complete user's query.");
+                    }
+                }
+            }
         }
-        System.out.println("=============================================");
-        System.out.println("=============================================");
     }
 
     /************************************************************
      getCompletion() - just a convenience method
      ***********************************************************/
-    public String getCompletion(LLM m, VectorDB v, String userquery) throws LLMCompletionException {
+    public String getCompletion(LLM m, VectorDB v, String coll, String userquery) throws LLMCompletionException {
         Utility util = new Utility();
 
-        // Create list of float arrays (list of vectors)... but only need one here
+        // Create list of float arrays (list of vectors)... but only need one here (only want one result)
         List<List<Float>> smallvec = new ArrayList<>();
-        m.setModel(EMBEDDING_MODEL);
         smallvec.add(m.sendEmbeddingRequest(userquery));
-        
-        m.setModel(COMPLETION_MODEL);
+
         List<String> match;
-        match = v.searchDB_using_targetvectors(COLLECTION_NAME, smallvec, 5);
+        match = v.searchDB_using_targetvectors(coll, smallvec, 5);
         //System.out.println("Finding nearest neighbors for [" + userquery + "]... \nSTART-----------------------");
         //match.forEach(System.out::println);     // These are the top "max" nearest neighbors
         //System.out.println("Finding nearest neighbors... \nEND---------------------------");
 
         String bigprompt = "";
-        bigprompt = util.TextfiletoString(PREAMBLE);
-        //System.out.println("DEBUG: [" + bigprompt + " ]");
+        bigprompt = util.TextfiletoString(m.getPreamble_file());
         bigprompt += util.createBigString(match);
         bigprompt += userquery;
-        // System.out.println("BIGPROMPT [" + bigprompt + "]");
 
-        m.setModel("gpt-3.5-turbo");       // completion model
         String llmresponse = "";
         try {
             llmresponse = m.sendCompletionRequest("user", bigprompt);
@@ -131,21 +133,4 @@ public class Tester {
         }
         return llmresponse;
     }
-
-    /************************************************************
-     population_ollection_dummy - just a convenience method for testing...
-     ***********************************************************//*
-    private void populate_collection_dummy(VectorDB vdb, String coll, int numentries, int vecsize) {
-        System.out.println("dummy data... insert_collection() with " + numentries + " rows -------------------------");
-        Utility util = new Utility();
-        try {
-            vdb.insert_collection(coll,
-                    util.createDummySentenceIds(numentries),
-                    util.createDummySentences(numentries),
-                    util.createDummyEmbeddings(numentries, vecsize));
-        } catch (VectorDBException vex) {
-            System.err.println("***ERROR: Cannot populate coll [" + coll + "] in database.");
-        }
-
-    }*/
 }

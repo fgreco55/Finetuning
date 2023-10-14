@@ -1,5 +1,6 @@
 package Model;
 
+import Utilities.Utility;
 import com.theokanning.openai.completion.chat.*;
 import com.theokanning.openai.embedding.Embedding;
 import com.theokanning.openai.embedding.EmbeddingRequest;
@@ -23,12 +24,8 @@ import java.util.*;
 public class LLM {
     OpenAiService service;              // Needed for Theo Kanning API
     private String apikey;              // API key - should eventually ncrypt after use
-    private String user;
+    private String user;                // user id of the llm interaction
     private final static String DEFAULT_CONFIG = "/Users/fgreco/src/Finetuning/src/main/resources/llm.properties";
-    private String model;               // LLM model name (should ensure correct names)
-                                        // "gpt-3.5-turbo" decent completion model
-                                        // "text-embedding-ada-002" embedding model
-                                        // Should really have separate completion_model and embedding_model
     private int maxTokensRequested;     // how many tokens in completion
     private boolean stream = false;     // send results with SSE or not
     private float temperature;          // sampling temperature - how "creative" (higher is more) is the completion (0-2, default:1.0)
@@ -36,49 +33,68 @@ public class LLM {
     private int numCompletionsRequested;    // should typically be 1
     private final static String EMBEDDING_MODEL = "text-embedding-ada-002";
     private final static String COMPLETION_MODEL = "gpt-3.5-turbo";
+    private final static String SPEECH_MODEL = "whisper-1";
+    private String completion_model = COMPLETION_MODEL;     // default
+    private String embedding_model = EMBEDDING_MODEL;       // default
+    private String speech_model = SPEECH_MODEL;
+    private String preamble_file;
 
     /************************************************************
      Constructor
      ***********************************************************/
-    public LLM(String configfile)  {
+    public LLM(String configfile) throws LLMCompletionException {
         Properties prop = null;
+        Utility util = new Utility();
 
         try {
-            prop = getConfigProperties(configfile);
+            prop = util.getConfigProperties(configfile);
         } catch (IOException iox) {
             System.err.println("Cannot find config file [" + configfile + "]");
         }
 
         String token = prop.getProperty("llmservice.apikey");
-        String model = prop.getProperty("llmservice.model");
-        int maxtokens = Integer.parseInt(prop.getProperty("llmservice.maxtokensrequested", "512"));
-        float temp = Float.parseFloat(prop.getProperty("llmservice.temperature", "1.0"));
-        float top = Float.parseFloat(prop.getProperty("llmservice.percentsampled", "1.0"));
-        int numcompletions = Integer.parseInt(prop.getProperty("llmservice.numcompletions", "1"));
-        boolean stream = Boolean.parseBoolean(prop.getProperty("llmservice.stream", "false"));
 
-        setParams(token, model, maxtokens, temp, top, numcompletions, stream);
+        if (token == (String) null)            // Cannot continue without an API key from LLM provider
+            throw new LLMCompletionException("You need an API key from the LLM provider");
+
+        setParams(token,
+                prop.getProperty("llmservice.completion_model"),
+                prop.getProperty("llmservice.embedding_model"),
+                Integer.parseInt(prop.getProperty("llmservice.maxtokensrequested", "512")),
+                Float.parseFloat(prop.getProperty("llmservice.temperature", "1.0")),
+                Float.parseFloat(prop.getProperty("llmservice.percentsampled", "1.0")),
+                Integer.parseInt(prop.getProperty("llmservice.numcompletions", "1")),
+                Boolean.parseBoolean(prop.getProperty("llmservice.stream", "false")),
+                prop.getProperty("llmservice.preamble")
+                );
+
         this.service = new OpenAiService(this.apikey);
     }
 
-    public LLM(String apikey, String model, int maxtokens, float temp, float percentSampled, int numCompletionsRequested) {
-        setParams(apikey, model, maxtokens, temp, top, numCompletionsRequested, false);    // handle stream/SSE TBD
+    public LLM(String apikey, String completion_model, String embedding_model,
+               int maxtokens, float temp, float percentSampled,
+               int numCompletionsRequested, String pfile) {
+        setParams(apikey, completion_model, embedding_model, maxtokens, temp, top, numCompletionsRequested, false, pfile);    // handle stream/SSE TBD
         this.service = new OpenAiService(this.apikey);
     }
 
-    public LLM(String key, String model, int maxtokens, float temp) {
-        this(key, model, maxtokens, temp, 1, 1);
-    }
+    /*public LLM(String key, String cmodel, String emodel, int maxtokens, float temp) {
+        this(key, cmodel, emodel, maxtokens, temp, 1, 1);
+    }*/
 
-    private void setParams(String token, String model, int maxtokens, float temp, float percentSampled, int numcompletions, boolean stream) {
+    private void setParams(String token, String cmodel, String emodel,
+                           int maxtokens, float temp, float percentSampled, int numcompletions, boolean stream, String pfile) {
         this.apikey = token;
-        this.model = model;
+        this.completion_model = cmodel;
+        this.embedding_model = emodel;
         this.maxTokensRequested = maxtokens;
         this.temperature = temp;
         this.top = percentSampled;
         this.numCompletionsRequested = numcompletions;
         this.stream = false;            // currently only allow non-streaming (SSE TBD)
+        this.preamble_file = pfile;
     }
+
     /************************************************************
      Set/Get Methods
      ***********************************************************/
@@ -86,13 +102,15 @@ public class LLM {
     public OpenAiService getService() {
         return service;
     }
+
     public void setService(OpenAiService service) {
-          this.service = service;
-      }
+        this.service = service;
+    }
 
     public String getApikey() {
         return apikey;
     }
+
     public void setApikey(String apikey) {
         this.apikey = apikey;
     }
@@ -105,12 +123,28 @@ public class LLM {
         this.user = user;
     }
 
-    public String getModel() {
-        return model;
+    public String getCompletion_model() {
+        return completion_model;
     }
 
-    public void setModel(String model) {
-        this.model = model;
+    public void setCompletion_model(String completion_model) {
+        this.completion_model = completion_model;
+    }
+
+    public String getEmbedding_model() {
+        return embedding_model;
+    }
+
+    public void setEmbedding_model(String embedding_model) {
+        this.embedding_model = embedding_model;
+    }
+
+    public String getSpeech_model() {
+        return speech_model;
+    }
+
+    public void setSpeech_model(String speech_model) {
+        this.speech_model = speech_model;
     }
 
     public int getMaxTokensRequested() {
@@ -129,6 +163,14 @@ public class LLM {
         this.temperature = temperature;
     }
 
+    public String getPreamble_file() {
+        return preamble_file;
+    }
+
+    public void setPreamble_file(String preamble_file) {
+        this.preamble_file = preamble_file;
+    }
+
     /************************************************************
      Talk to LLM Methods
      ***********************************************************/
@@ -136,13 +178,14 @@ public class LLM {
         if (!isLegalRole(role))
             throw new LLMCompletionException("Role [" + role + "] not recognizable");
 
+        String cmodel = getCompletion_model();      // make sure to use correct completion model
         List<String> results = new ArrayList<>();
 
         final List<ChatMessage> messages = new ArrayList<>();
         final ChatMessage systemMessage = new ChatMessage(ChatMessageRole.USER.value(), msg);
         messages.add(systemMessage);
         ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
-                .model(this.model)
+                .model(cmodel)
                 .messages(messages)
                 .n(this.numCompletionsRequested)          // should be 1 - future we might return more than 1
                 .maxTokens(this.maxTokensRequested)
@@ -153,68 +196,33 @@ public class LLM {
         //System.out.println("this.service: " + this.service.toString());
 
         List<ChatCompletionChoice> choices = this.service.createChatCompletion(chatCompletionRequest).getChoices();
-        for(ChatCompletionChoice s: choices) {
-         results.add(s.getMessage().getContent().trim());
+        for (ChatCompletionChoice s : choices) {
+            results.add(s.getMessage().getContent().trim());
         }
         return results.get(0).toString();
     }
 
     public List<Float> sendEmbeddingRequest(String msg) {
+        Utility util = new Utility();
+
         List<Float> results = new ArrayList<>();
         EmbeddingRequest embeddingRequest = EmbeddingRequest.builder()
-                .model(this.model)
+                .model(getEmbedding_model())
                 .input(Collections.singletonList(msg))
                 .build();
+
         List<Embedding> embedding = this.service.createEmbeddings(embeddingRequest).getData();
         List<Double> emb = embedding.get(0).getEmbedding();     // OpenAI returns Doubles... Milvus wants Floats...
-        List<Float> newb = Double2Float(emb);
-        int size =  embedding.get(0).getEmbedding().size();
+        List<Float> newb = util.Double2Float(emb);
+        int size = embedding.get(0).getEmbedding().size();
         for (int i = 0; i < size; i++) {
-                results.add(newb.get(i));
+            results.add(newb.get(i));
         }
         return results;
     }
-    List<Float> Double2Float(List<Double> d) {
-        List<Float> flist = new ArrayList<>();
-        for(int i = 0; i < d.size(); i++) {
-            flist.add(d.get(i).floatValue());
-        }
-        return flist;
-    }
+
     public List<Float> getEmbedding(String str) {
         return sendEmbeddingRequest(str);
-    }
-    
-
-    /************************************************************
-     main - Test some things...
-     ***********************************************************/
-    public static void main(String[] args) throws IOException, LLMCompletionException {
-
-        LLM myllm = new LLM(DEFAULT_CONFIG);
-        String s = myllm.sendCompletionRequest("user", "roses are red, violets are");
-        System.out.println("RESULT: " + s);
-
-        myllm.setModel(EMBEDDING_MODEL);       // try embedding
-        List<Float> vec = myllm.sendEmbeddingRequest("hello world");
-        for(Float d: vec){
-            System.out.print(d + " ");
-        }
-        System.out.println();
-        System.out.println("num of elements: " + vec.size());
-    }
-
-    private Properties getConfigProperties(String fname) throws IOException {
-        Properties prop = new Properties();
-        InputStream in = new FileInputStream(fname);
-
-        prop.load(in);
-
-        for (Enumeration e = prop.propertyNames(); e.hasMoreElements(); ) {
-            String key = e.nextElement().toString();
-            System.out.println(key + " = " + prop.getProperty(key));
-        }
-        return prop;
     }
 
     void displayResponse(List<ChatCompletionChoice> res) {
@@ -222,10 +230,31 @@ public class LLM {
             System.out.println(s.getMessage().getContent());
         }
     }
+
     private boolean isLegalRole(String r) {
         return switch (r) {
             case "user", "assistant", "system" -> true;
             default -> false;
         };
+    }
+
+    /************************************************************
+     main - Test some things...
+     ***********************************************************/
+    public static void main(String[] args) throws IOException, LLMCompletionException {
+
+        LLM myllm = new LLM(DEFAULT_CONFIG);
+        System.out.println("Completion model: " + myllm.getCompletion_model());
+
+        String s = myllm.sendCompletionRequest("user", "roses are red, violets are");
+        System.out.println("RESULT: " + s);
+
+        System.out.println("Embedding model: " + myllm.getEmbedding_model());
+        List<Float> vec = myllm.sendEmbeddingRequest("hello world");
+        for (Float d : vec) {
+            System.out.print(d + " ");
+        }
+        System.out.println();
+        System.out.println("num of elements: " + vec.size());
     }
 }
