@@ -59,9 +59,10 @@ public class VectorDB {
     }
 
     public VectorDB(String configfile) {
+        Utility util = new Utility();
         Properties prop = null;
         try {
-            prop = getConfigProperties(configfile);
+            prop = util.getConfigProperties(configfile);
         } catch (IOException iox) {
             System.err.println("Cannot find config file [" + configfile + "]");
         }
@@ -271,15 +272,14 @@ public class VectorDB {
     }
 
     /*********************************************************************
-     Populate collection with dummy data
+     Populate collection with data
 
      sentences - list of sentences to be inserted into Milvus
      sentence_id - list of sentence ids
      svec - list of vectors, one list for each sentence
      vecsize - size of the vector array for each element of sentences list (only changes if embedding algo changes)
      ********************************************************************/
-    public void insert_collection(String coll,
-                                  List<Long> sentence_id, List<String> sentences, List<List<Float>> svec)
+    public void insert_collection(String coll, List<Long> sentence_id, List<String> sentences, List<List<Float>> svec)
             throws VectorDBException {
 
         // Arrays must be the same length...
@@ -287,7 +287,7 @@ public class VectorDB {
             throw new VectorDBException("***ERROR: populate_collection() - array sizes must match.");
         } else if (sentences == (List<String>) null) {
             throw new VectorDBException("***ERROR: sentence array is null.  Cannot insert into database.");
-        } else if (svec == (List<List<Float>>) null)  {
+        } else if (svec == (List<List<Float>>) null) {
             throw new VectorDBException("***ERROR: embeddings array is null.  Cannot insert into database.");
         }
 
@@ -427,10 +427,10 @@ public class VectorDB {
 
 
     /************************************************************
-     delete_entry() - Delete an entry from a collection where there is a string match - NEED TO TEST
+     delete_entry() - Delete an entry from a collection where there is a string match - NEED TO TEST - fdg
      ***********************************************************/
     public void delete_entry(String coll, String str) {
-        String deleteStr = "sentence = " + "\"" + str + "\"";
+        String deleteStr = "sentence = " + "\"" + str + "\"";   // NOT sure if this is a good idea... -fdg
 
         R<MutationResult> resp = mc.delete(
                 DeleteParam.newBuilder()
@@ -490,7 +490,7 @@ public class VectorDB {
         if (cresponse.getStatus() != R.Status.Success.getCode()) {
             System.out.println("**ERROR in getting collection stats. " + cresponse.getMessage());
         } else {
-            System.out.println("Success in getting collection stats!!");
+            //System.out.println("Success in getting collection stats!!");
 
             GetCollStatResponseWrapper wrapper = new GetCollStatResponseWrapper(cresponse.getData());
             System.out.println("Row count: " + wrapper.getRowCount());
@@ -512,7 +512,7 @@ public class VectorDB {
         if (cresponse.getStatus() != R.Status.Success.getCode()) {
             System.out.println("**ERROR in getting collection stats. " + cresponse.getMessage());
         } else {
-            System.out.println("Success in getting collection stats!!");
+            //System.out.println("Success in getting collection stats in getCollectionRowCount()!!");
 
             GetCollStatResponseWrapper wrapper = new GetCollStatResponseWrapper(cresponse.getData());
             rows = wrapper.getRowCount();
@@ -520,6 +520,7 @@ public class VectorDB {
         }
         return rows;
     }
+
     /************************************************************
      * Can't go over this sentence size
      ***********************************************************/
@@ -627,9 +628,9 @@ public class VectorDB {
         return results;
     }
 
-    /*
-      Just some VectorDB tests...
-     */
+    /******************************************************
+        main() - Just some VectorDB tests...
+     *****************************************************/
     public static void main(String[] args) throws VectorDBException {
         VectorDB vdb = new VectorDB(DEFAULT_CONFIG);
 
@@ -651,8 +652,9 @@ public class VectorDB {
 
         vdb.collExists(collection);
 
-        vdb.show_databases();
-        vdb.create_database(database);
+        if (!vdb.databaseExists(database)) {
+            vdb.create_database(database);
+        }
         vdb.show_databases();
 
         System.out.println("Creating collection [" + collection + "]");
@@ -703,24 +705,4 @@ public class VectorDB {
 
         return searchDB_using_targetvectors(coll, targetVectors, max);
     }
-
-    /************************************************************
-     *    getConfigProperties()
-     * @param fname
-     * @return legal Properties or null
-     * @throws IOException
-     ***********************************************************/
-    private Properties getConfigProperties(String fname) throws IOException {
-        Properties prop = new Properties();
-        InputStream in = new FileInputStream(fname);
-
-        prop.load(in);
-
-        for (Enumeration e = prop.propertyNames(); e.hasMoreElements(); ) {
-            String key = e.nextElement().toString();
-            System.out.println(key + " = " + prop.getProperty(key));
-        }
-        return prop;
-    }
-
 }
