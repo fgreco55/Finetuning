@@ -109,7 +109,7 @@ public class Utility {
         // Iterate through sentences and output them one at a time
         int start = sentenceIterator.first();
 
-        System.out.println("PARSED TEXT BY SENTENCE:");
+        //System.out.println("PARSED TEXT BY SENTENCE:");
         for (int end = sentenceIterator.next(); end != BreakIterator.DONE; start = end, end = sentenceIterator.next()) {
             String s = text.substring(start, end).trim();
             //System.out.println("* " + s);
@@ -160,28 +160,6 @@ public class Utility {
         }
         return bigstr;
     }
-
-    /*static class MultipartBodyPublisher implements HttpRequest.BodyPublisher {
-        private final byte[] data;
-        private final String boundary;
-
-        public MultipartBodyPublisher(byte[] data, String boundary) {
-            this.data = data;
-            this.boundary = boundary;
-        }
-
-        public long contentLength() {
-            return data.length;
-        }
-
-        public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
-            throw new UnsupportedOperationException("Not implemented");
-        }
-
-        public void writeTo(OutputStream out) throws IOException {
-            out.write(data);
-        }
-    }*/
 
     /************************************************************
      Create random strings just for simulation.

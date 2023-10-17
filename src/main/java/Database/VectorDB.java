@@ -12,24 +12,21 @@ import io.milvus.param.dml.QueryParam;
 import io.milvus.param.dml.SearchParam;
 import io.milvus.param.highlevel.collection.ListCollectionsParam;
 import io.milvus.param.highlevel.collection.response.ListCollectionsResponse;
-import io.milvus.param.highlevel.dml.response.DeleteResponse;
 import io.milvus.param.index.CreateIndexParam;
 import io.milvus.param.partition.CreatePartitionParam;
 import io.milvus.response.*;
 
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.*;
 
 public class VectorDB {
     static final int MILVUS_PORT = 19530;                // default port
     static final String MILVUS_HOST = "localhost";      // default host
-    static final String MILVUS_DATABASE = "frankdb";    // default DB
-    static final String COLLECTION_NAME = "frankcollection";
-    static final String PARTITION_NAME = "sentence_partition";
+    //static final String MILVUS_DATABASE = "frankdb";    // DB to start off... Milvus doesn't have "use db" yet
+    //static final String COLLECTION_NAME; = "frankcollection";
+    static final String PARTITION_NAME = "sentence_partition";      // chunk-partition??
     static final String COLLECTION_DESCRIPTION = "Simple test of collection insertion and query/search";
-    static final String FIELD1 = "sentence_id";
+    static final String FIELD1 = "sentence_id";         // in the future... change these to "chunk" not sentences
     static final String FIELD2 = "sentence";            // actual sentence stored as meta-data for later retrieval
     static final String FIELD3 = "sentence_vector";
     static final int MAX_SENTENCE_LENGTH = 5120;
@@ -209,13 +206,14 @@ public class VectorDB {
 
     /************************************************************
      Create the field schemas, create the collection schemas in the DB
+     Create Milvus collection schema... you need datatype for each field
+        A Milvus Collection is like a RDBMS table.
+
+        TBD - change "sentence" to "chunk"... we may not use sentences in the future.
      ***********************************************************/
     public void create_collection(String coll, int vecsize) {
         R<RpcStatus> response = null;
-            /*
-             Create Milvus collection schema... you need datatype for each field
-                 A Milvus Collection is like a RDBMS table
-             */
+
         FieldType fieldType1 = FieldType.newBuilder()        // schema for the id of the entry
                 .withName(FIELD1)
                 .withDataType(DataType.Int64)
@@ -291,18 +289,10 @@ public class VectorDB {
             throw new VectorDBException("***ERROR: embeddings array is null.  Cannot insert into database.");
         }
 
-        //System.out.println("CREATING DATA FOR [" + coll + "]............");
-
         List<InsertParam.Field> fields = new ArrayList<>();
         fields.add(new InsertParam.Field(FIELD1, sentence_id));
         fields.add(new InsertParam.Field(FIELD2, sentences));
         fields.add(new InsertParam.Field(FIELD3, svec));
-
-        /*System.out.println("INSERTING DATA INTO [" + coll + "]............");
-        System.out.println("     sentence id [" + sentence_id.size() + "]");
-        System.out.println("       sentences [" + sentences.size() + "]");
-        System.out.println("          vector [" + svec.size() + "]");
-        System.out.println("vector embedding [" + svec.get(0).size() + "]");*/
 
         InsertParam insertParam = InsertParam.newBuilder()
                 .withCollectionName(coll)
@@ -313,10 +303,7 @@ public class VectorDB {
         if (response.getStatus() != R.Status.Success.getCode()) {
             System.err.println("***ERROR: insert() failed");
             throw new VectorDBException("Cannot insert() into collection [" + coll + "]");
-        } else {
-            System.out.println("Success - insert()");
         }
-
     }
 
     /************************************************************
@@ -334,7 +321,6 @@ public class VectorDB {
         } catch (VectorDBException vex) {
             System.err.println("***ERROR: Cannot populate coll [" + coll + "] in database.");
         }
-
     }
 
 
@@ -366,7 +352,6 @@ public class VectorDB {
      ***********************************************************/
     public void drop_collection(String coll) throws VectorDBException {
         check_init();
-        //System.out.println("DROPPING COLLECTION " + coll + " IN [" + this.database + "]..............");
         DropCollectionParam dropParam = DropCollectionParam.newBuilder()
                 .withCollectionName(coll)
                 .build();
@@ -400,6 +385,7 @@ public class VectorDB {
 
     /************************************************************
      insert_entry() - Insert an entry from a collection - NEED TO TEST
+                NEED TO DETECT INSERTING DUPLICATES... need to store hash of sentence and compare to hash of incoming sentence.
      ***********************************************************/
     public void insert_entry(String coll, String sent, List<Float> vec) {
         List<Integer> ilist = new ArrayList<>();
@@ -428,6 +414,7 @@ public class VectorDB {
 
     /************************************************************
      delete_entry() - Delete an entry from a collection where there is a string match - NEED TO TEST - fdg
+                        NEED A BETTER WAY TO DELETE AN ENTRY.
      ***********************************************************/
     public void delete_entry(String coll, String str) {
         String deleteStr = "sentence = " + "\"" + str + "\"";   // NOT sure if this is a good idea... -fdg
@@ -448,7 +435,7 @@ public class VectorDB {
     }
 
     /************************************************************
-     Flush - data is sealed and then flushed to storage
+     Flush - data is sealed and then flushed to storage    - important
      ***********************************************************/
     public void flush_collection(String coll) {
         FlushParam param = FlushParam.newBuilder()
@@ -457,8 +444,6 @@ public class VectorDB {
         R<FlushResponse> response = mc.flush(param);
         if (response.getStatus() != R.Status.Success.getCode()) {
             System.out.println(response.getMessage());
-        } else {
-            System.out.println("FLUSH successful!");
         }
     }
 
@@ -486,18 +471,20 @@ public class VectorDB {
         GetCollectionStatisticsParam param = GetCollectionStatisticsParam.newBuilder()
                 .withCollectionName(coll)
                 .build();
+
         R<GetCollectionStatisticsResponse> cresponse = mc.getCollectionStatistics(param);
         if (cresponse.getStatus() != R.Status.Success.getCode()) {
             System.out.println("**ERROR in getting collection stats. " + cresponse.getMessage());
         } else {
-            //System.out.println("Success in getting collection stats!!");
-
             GetCollStatResponseWrapper wrapper = new GetCollStatResponseWrapper(cresponse.getData());
             System.out.println("Row count: " + wrapper.getRowCount());
             System.out.println("[" + coll + "]: " + wrapperDescribeCollection);
         }
     }
 
+    /************************************************************
+     Get the number of rows in a collection
+     ***********************************************************/
     public long getCollectionRowCount(String coll) throws VectorDBException {
         long rows = 0;
 
@@ -508,15 +495,14 @@ public class VectorDB {
         GetCollectionStatisticsParam param = GetCollectionStatisticsParam.newBuilder()
                 .withCollectionName(coll)
                 .build();
+
         R<GetCollectionStatisticsResponse> cresponse = mc.getCollectionStatistics(param);
         if (cresponse.getStatus() != R.Status.Success.getCode()) {
             System.out.println("**ERROR in getting collection stats. " + cresponse.getMessage());
         } else {
-            //System.out.println("Success in getting collection stats in getCollectionRowCount()!!");
-
             GetCollStatResponseWrapper wrapper = new GetCollStatResponseWrapper(cresponse.getData());
             rows = wrapper.getRowCount();
-            System.out.println("collection [" + coll + "] Row count: " + rows);
+            //System.out.println("collection [" + coll + "] Row count: " + rows);
         }
         return rows;
     }
@@ -537,7 +523,7 @@ public class VectorDB {
  ************************************************************/
 
     /************************************************************
-     Query the DB for specific filters
+     Query the DB for specific filters   - see search() for finding vector neighbors
      - currently restricted to "id, sentence, sentence-embedding-vector"
      as FIELD1, FIELD2, and FIELD3
      coll - collection name
@@ -559,8 +545,6 @@ public class VectorDB {
         R<QueryResults> respQuery = mc.query(queryParam);
         if (respQuery.getStatus() != R.Status.Success.getCode()) {
             throw new VectorDBException("**ERROR: Query FAILED! " + respQuery.getMessage());
-        } else {
-            System.out.println("QUERY successful!");
         }
 
         QueryResultsWrapper wrapperQuery = new QueryResultsWrapper(respQuery.getData());
@@ -607,7 +591,6 @@ public class VectorDB {
             System.err.println("***ERROR: Cannot Search. " + resp.getMessage());
             return new ArrayList<>();
         } else {
-            //System.err.println("SEMANTIC SEARCH SUCCESS!!");
             return getSearchData(resp, vec.size());     // get the actual data
         }
     }
@@ -615,9 +598,7 @@ public class VectorDB {
 
     private List<String> getSearchData(R<SearchResults> resp, int size) {
         SearchResultsWrapper wrapper = new SearchResultsWrapper(resp.getData().getResults());
-        //System.out.println("Search results (" + size + ") ");
         List<String> results = new ArrayList<>();
-        //System.out.println("SIZE: " + size);
         for (int i = 0; i < size; i++) {
             List<SearchResultsWrapper.IDScore> scores = wrapper.getIDScore(i);
             for (SearchResultsWrapper.IDScore score : scores) {
@@ -635,7 +616,7 @@ public class VectorDB {
         VectorDB vdb = new VectorDB(DEFAULT_CONFIG);
 
         vdb.show_databases();
-        vdb.setCollection(COLLECTION_NAME);
+        vdb.setCollection(vdb.getCollection());
 
         String collection = vdb.getCollection();
         String database = vdb.getDatabase();

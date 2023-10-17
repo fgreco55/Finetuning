@@ -58,8 +58,9 @@ public class LLM {
             throw new LLMCompletionException("You need an API key from the LLM provider");
 
         setParams(token,
-                prop.getProperty("llmservice.completion_model"),
-                prop.getProperty("llmservice.embedding_model"),
+                prop.getProperty("llmservice.completion_model", COMPLETION_MODEL),
+                prop.getProperty("llmservice.embedding_model", EMBEDDING_MODEL),
+                prop.getProperty("llmservice.speech_model", SPEECH_MODEL),
                 Integer.parseInt(prop.getProperty("llmservice.maxtokensrequested", "512")),
                 Float.parseFloat(prop.getProperty("llmservice.temperature", "1.0")),
                 Float.parseFloat(prop.getProperty("llmservice.percentsampled", "1.0")),
@@ -74,7 +75,7 @@ public class LLM {
     public LLM(String apikey, String completion_model, String embedding_model,
                int maxtokens, float temp, float percentSampled,
                int numCompletionsRequested, String pfile) {
-        setParams(apikey, completion_model, embedding_model, maxtokens, temp, top, numCompletionsRequested, false, pfile);    // handle stream/SSE TBD
+        setParams(apikey, completion_model, embedding_model, speech_model, maxtokens, temp, top, numCompletionsRequested, false, pfile);    // handle stream/SSE TBD
         this.service = new OpenAiService(this.apikey);
     }
 
@@ -82,11 +83,12 @@ public class LLM {
         this(key, cmodel, emodel, maxtokens, temp, 1, 1);
     }*/
 
-    private void setParams(String token, String cmodel, String emodel,
+    private void setParams(String token, String cmodel, String emodel, String smodel,
                            int maxtokens, float temp, float percentSampled, int numcompletions, boolean stream, String pfile) {
         this.apikey = token;
         this.completion_model = cmodel;
         this.embedding_model = emodel;
+        this.speech_model = smodel;
         this.maxTokensRequested = maxtokens;
         this.temperature = temp;
         this.top = percentSampled;
@@ -193,7 +195,6 @@ public class LLM {
                 .stream(this.stream)
                 .build();
         List<ChatCompletionChunk> chunks = new ArrayList<>();
-        //System.out.println("this.service: " + this.service.toString());
 
         List<ChatCompletionChoice> choices = this.service.createChatCompletion(chatCompletionRequest).getChoices();
         for (ChatCompletionChoice s : choices) {
@@ -221,16 +222,25 @@ public class LLM {
         return results;
     }
 
+    /*
+     * getEmbedding() - just a convenience method
+     */
     public List<Float> getEmbedding(String str) {
         return sendEmbeddingRequest(str);
     }
 
+    /*
+     * Display all the completion (responses)
+     */
     void displayResponse(List<ChatCompletionChoice> res) {
         for (ChatCompletionChoice s : res) {
             System.out.println(s.getMessage().getContent());
         }
     }
 
+    /*
+     * Make sure the role is a legal one (maybe OpenAI specific?)
+     */
     private boolean isLegalRole(String r) {
         return switch (r) {
             case "user", "assistant", "system" -> true;

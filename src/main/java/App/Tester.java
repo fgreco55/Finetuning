@@ -120,6 +120,9 @@ public class Tester {
         //match.forEach(System.out::println);     // These are the top "max" nearest neighbors
         //System.out.println("Finding nearest neighbors... \nEND---------------------------");
 
+        /*
+         * following prompt should be in a Prompt class which encapsulates Prompt strategies. -fdg
+         */
         String bigprompt = "";
         bigprompt = util.TextfiletoString(m.getPreamble_file());
         bigprompt += util.createBigString(match);

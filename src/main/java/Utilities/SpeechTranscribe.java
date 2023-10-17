@@ -88,12 +88,8 @@ public class SpeechTranscribe {
     public String transcribe(String fileName) {
         File file = new File(fileName);
 
-        // Collect the transcriptions of each chunk
-        List<String> transcriptions = new ArrayList<>();
-
-        // First prompt is the word list
-        //String prompt = WORD_LIST;
-        String prompt = "";     // REVIEW LATER...  Not sure why we need this prompt
+        List<String> transcriptions = new ArrayList<>();    // Place to stare all the transcriptions
+        String prompt = "";     // Apparently OpenAI needs this to connect prior chunk to the current chunk
 
         if (file.length() <= MAX_ALLOWED_SIZE) {
             String transcription = transcribeChunk(prompt, file);
@@ -102,21 +98,18 @@ public class SpeechTranscribe {
             var splitter = new SpeechFileSplitter();
             List<File> chunks = splitter.splitWavFileIntoChunks(file);
             for (File chunk : chunks) {
-                // Subsequent prompts are the previous transcriptions  ---  WHY??
                 String transcription = transcribeChunk(prompt, chunk);
                 System.err.println("[" + transcription + "]");
                 transcriptions.add(transcription);
-                prompt = transcription;
+                prompt = transcription;         // subsequent prompts are the prev transcriptions to stitch them together (as per OpenAI)
 
-                // After transcribing, no longer need the chunk
-                if (!chunk.delete()) {
+                if (!chunk.delete()) {          // Don't need the chunk after transcribing
                     System.out.println("Failed to delete " + chunk.getName());
                 }
             }
         }
 
-        // Join the individual transcripts and write to a file
-        String transcription = String.join(" ", transcriptions);
+        String transcription = String.join(" ", transcriptions);     // glom them all together
         return transcription;
 
     }

@@ -5,6 +5,7 @@ import Database.VectorDBException;
 import Model.LLM;
 import Model.LLMCompletionException;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,28 +36,57 @@ public class FinetuningUtils {
         return idlist;
     }
 
-    public void populate(VectorDB v, String collection, LLM m, Utility vut, String url) {
-        System.out.println("Populating collection [" + collection + "] ====================================");
-        List<String> sents = vut.URLtoSentences(url);
-        System.out.println("DEBUG: rows: " + sents.size());
-        sents.forEach(System.out::println);
+    public void populateFromNote(VectorDB v, String collection, LLM m, Utility vut, String note) {       // TBD
+    }
 
+    public void populateFromURL(VectorDB v, String collection, LLM m, Utility vut, String url) {
+        List<String> sents = vut.URLtoSentences(url);
+        System.out.println("Populating [" + collection + "-" + sents.size() + "] with " + url);
+        insert_sentences(v, collection, m, sents);
+    }
+
+    public void populateFromPDF(VectorDB v, String collection, LLM m, Utility vut, String pdf) throws IOException {
+        List<String> sents = vut.PDFfiletoSentences(pdf);
+        System.out.println("Populating [" + collection + "-" + sents.size() + "] with " + pdf);
+        insert_sentences(v, collection, m, sents);
+    }
+
+    public void populateFromTextfile(VectorDB v, String collection, LLM m, Utility vut, String textfile) {
+        List<String> sents = vut.TextfiletoSentences(textfile);
+        System.out.println("Populating [" + collection + "-" + sents.size() + "] with " + textfile);
+        insert_sentences(v, collection, m, sents);
+    }
+
+    public void populateFromRecording(VectorDB v, String collection, LLM m, Utility vut, String recordingFile) {
+        SpeechTranscribe wt = new SpeechTranscribe(m.getApikey(), m.getSpeech_model());
+        String s = wt.transcribe(recordingFile);
+        List<String> sents = vut.StringtoSentences(s);
+        System.out.println("Populating [" + collection + "-" + sents.size() + "] with " + recordingFile);
+        insert_sentences(v, collection, m, sents);
+    }
+
+    /*
+     * insert_sentences() - Get embeddings for every sentence (chunk) and insert [id, sentence and embedding] arrays
+     */
+    private void insert_sentences(VectorDB v, String collection, LLM model, List<String> sentences) {
         List<Long> ids = new ArrayList<>();
         List<List<Float>> veclist = new ArrayList<>();
-        for (int i = 0; i < sents.size(); i++) {
-            String s = sents.get(i);
-            List<Float> f = m.sendEmbeddingRequest(s);
+        for (int i = 0; i < sentences.size(); i++) {
+            String s = sentences.get(i);
+            List<Float> f = model.sendEmbeddingRequest(s);
             veclist.add(f);
             ids.add(Long.parseLong(1000 + i + ""));
         }
         try {
-            v.insert_collection(collection, ids, sents, veclist);
+            v.insert_collection(collection, ids, sentences, veclist);
             System.out.println("[" + collection + "] has " + v.getCollectionRowCount(collection) + " rows.");
         } catch (VectorDBException vex) {
             System.err.println("***ERROR: main() - Cannot insert collection");
         }
     }
-
+     /*
+      * getCompletion() - Given a userquery, find the nearest neighbors (size max)
+      */
 
     public String getCompletion(LLM m, VectorDB v, String coll, String userquery) throws LLMCompletionException {
             Utility util = new Utility();
@@ -71,6 +101,10 @@ public class FinetuningUtils {
             //match.forEach(System.out::println);     // These are the top "max" nearest neighbors
             //System.out.println("Finding nearest neighbors... \nEND---------------------------");
 
+            /*
+             * Create prompt -  Need a Prompt class - preamble, instructions, contents, format, user-query and Strategy
+             *                  Strategy could be COT, Tree, Reactive...
+             */
             String bigprompt = "";
             bigprompt = util.TextfiletoString(m.getPreamble_file());
             bigprompt += util.createBigString(match);
