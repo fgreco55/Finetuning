@@ -19,8 +19,7 @@ another type, eg, html tags, in the future.   [see sentence parser in Utility.ja
    llmservice.percentsampled=1.00
    llmservice.numcompletions=1
    llmservice.stream=false
-   llmservice.preamble=/Users/fgreco/src/Finetuning/src/main/resources/preamble-deepnetts.txt
-   #llmservice.preamble=/Users/fgreco/src/Finetuning/src/main/resources/preamble-nyjavasig.txt
+   llmservice.preamble=/Users/fgreco/src/Finetuning/src/main/resources/preamble-nyjavasig.txt
    vdbservice.database=...name of your database...
    vdbservice.collection=...name of your collection...
    vdbservice.port=19530
