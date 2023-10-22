@@ -9,6 +9,7 @@ import com.theokanning.openai.service.OpenAiService;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.*;
 
 /************************************************************
@@ -28,6 +29,7 @@ public class LLM {
     private final static String DEFAULT_CONFIG = "/Users/fgreco/src/Finetuning/src/main/resources/llm.properties";
     private int maxTokensRequested;     // how many tokens in completion
     private boolean stream = false;     // send results with SSE or not
+    private long timeout;               // socket timeout
     private float temperature;          // sampling temperature - how "creative" (higher is more) is the completion (0-2, default:1.0)
     private float top;                  // nucleus sampling % [alternative to temperature - (0-1, default:1.0)
     private int numCompletionsRequested;    // should typically be 1
@@ -36,8 +38,13 @@ public class LLM {
     private final static String SPEECH_MODEL = "whisper-1";
     private String completion_model = COMPLETION_MODEL;     // default
     private String embedding_model = EMBEDDING_MODEL;       // default
+    private final static int VEC_SIZE = 1536;
+    private int vector_size = VEC_SIZE;                         // default... dependent on embedding vector length
     private String speech_model = SPEECH_MODEL;
     private String preamble_file;
+    private String instruction_file;
+    private final static String DEFAULT_LANGUAGE = "english";
+    private String language = DEFAULT_LANGUAGE;        // what language the LLM should use when conversing with the user;
 
     /************************************************************
      Constructor
@@ -66,25 +73,28 @@ public class LLM {
                 Float.parseFloat(prop.getProperty("llmservice.percentsampled", "1.0")),
                 Integer.parseInt(prop.getProperty("llmservice.numcompletions", "1")),
                 Boolean.parseBoolean(prop.getProperty("llmservice.stream", "false")),
-                prop.getProperty("llmservice.preamble")
+                prop.getProperty("llmservice.preamble"),
+                prop.getProperty("llmservice.instructions"),
+                Integer.parseInt(prop.getProperty("llmservice.vector_size", VEC_SIZE+"")),
+                prop.getProperty("llmservice.language", DEFAULT_LANGUAGE)
                 );
 
-        this.service = new OpenAiService(this.apikey);
+        this.timeout = Long.parseLong(prop.getProperty("llmservice.timeout", "10"));
+        this.service = new OpenAiService(this.apikey, Duration.ofSeconds(this.getTimeout()));
     }
 
     public LLM(String apikey, String completion_model, String embedding_model,
                int maxtokens, float temp, float percentSampled,
-               int numCompletionsRequested, String pfile) {
-        setParams(apikey, completion_model, embedding_model, speech_model, maxtokens, temp, top, numCompletionsRequested, false, pfile);    // handle stream/SSE TBD
+               int numCompletionsRequested, String pfile, String ifile, int vecsize, String lang) {
+        setParams(apikey, completion_model, embedding_model, speech_model, maxtokens, temp, top, numCompletionsRequested, false,
+                pfile, ifile, vecsize, lang);    // handle stream/SSE TBD
+
         this.service = new OpenAiService(this.apikey);
     }
 
-    /*public LLM(String key, String cmodel, String emodel, int maxtokens, float temp) {
-        this(key, cmodel, emodel, maxtokens, temp, 1, 1);
-    }*/
-
     private void setParams(String token, String cmodel, String emodel, String smodel,
-                           int maxtokens, float temp, float percentSampled, int numcompletions, boolean stream, String pfile) {
+                           int maxtokens, float temp, float percentSampled, int numcompletions, boolean stream,
+                           String pfile, String ifile, int vecsize, String lang) {
         this.apikey = token;
         this.completion_model = cmodel;
         this.embedding_model = emodel;
@@ -95,6 +105,8 @@ public class LLM {
         this.numCompletionsRequested = numcompletions;
         this.stream = false;            // currently only allow non-streaming (SSE TBD)
         this.preamble_file = pfile;
+        this.vector_size = vecsize;
+        this.language = lang;
     }
 
     /************************************************************
@@ -173,6 +185,38 @@ public class LLM {
         this.preamble_file = preamble_file;
     }
 
+    public long getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(int timeout) {
+        this.timeout = timeout;
+    }
+
+    public String getLanguage() {
+        return language;
+    }
+
+    public void setLanguage(String language) {
+        this.language = language;
+    }
+
+    public String getInstruction_file() {
+        return instruction_file;
+    }
+
+    public void setInstruction_file(String instruction_file) {
+        this.instruction_file = instruction_file;
+    }
+
+    public int getVector_size() {
+        return vector_size;
+    }
+
+    public void setVector_size(int vector_size) {
+        this.vector_size = vector_size;
+    }
+
     /************************************************************
      Talk to LLM Methods
      ***********************************************************/
@@ -184,7 +228,13 @@ public class LLM {
         List<String> results = new ArrayList<>();
 
         final List<ChatMessage> messages = new ArrayList<>();
-        final ChatMessage systemMessage = new ChatMessage(ChatMessageRole.USER.value(), msg);
+        ChatMessage systemMessage = null;
+        if (role.equalsIgnoreCase("user")) {
+            systemMessage = new ChatMessage(ChatMessageRole.USER.value(), msg);
+        }   else if (role.equalsIgnoreCase("system")) {
+            systemMessage = new ChatMessage(ChatMessageRole.SYSTEM.value(), msg);
+        }
+
         messages.add(systemMessage);
         ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
                 .model(cmodel)

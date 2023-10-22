@@ -39,7 +39,6 @@ public class Utility {
             return document.text();
         } catch (IOException e) {
             System.err.println("***ERROR:  Cannot access URL [" + url + "]. " + e.getMessage());
-            //e.printStackTrace();
             return (String) null;
         }
     }
@@ -259,10 +258,10 @@ public class Utility {
 
         prop.load(in);
 
-        for (Enumeration e = prop.propertyNames(); e.hasMoreElements(); ) {
+        /*for (Enumeration e = prop.propertyNames(); e.hasMoreElements(); ) {
             String key = e.nextElement().toString();
-            //System.out.println(key + " = " + prop.getProperty(key));
-        }
+            System.out.println(key + " = " + prop.getProperty(key));
+        }*/
         return prop;
     }
 

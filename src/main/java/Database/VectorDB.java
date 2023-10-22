@@ -150,8 +150,7 @@ public class VectorDB {
         response = mc.createDatabase(cparam);
         if (response.getStatus() != R.Status.Success.getCode()) {
             System.out.println("***FAILURE: " + response.getMessage());
-        } else
-            System.out.println("DB Created... SUCCESS ***");
+        }
     }
 
     /************************************************************
@@ -243,8 +242,7 @@ public class VectorDB {
         response = mc.createCollection(createCollectionReq);
         if (response.getStatus() != R.Status.Success.getCode()) {
             System.out.println("***FAILURE: " + response.getMessage());
-        } else
-            System.out.println("Collection created... SUCCESS ***");
+        } 
 
         mc.createPartition(
                 CreatePartitionParam.newBuilder()

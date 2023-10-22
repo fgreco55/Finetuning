@@ -36,7 +36,11 @@ public class FinetuningUtils {
         return idlist;
     }
 
-    public void populateFromNote(VectorDB v, String collection, LLM m, Utility vut, String note) {       // TBD
+    public void populateFromNote(VectorDB v, String collection, LLM m, Utility vut, String note) {
+        List<String> sents = new ArrayList<>();
+        sents.add(note);
+        System.out.println("Populating [" + collection + "-" + sents.size() + "] with " + note);
+        insert_sentences(v, collection, m, sents);
     }
 
     public void populateFromURL(VectorDB v, String collection, LLM m, Utility vut, String url) {
@@ -109,6 +113,9 @@ public class FinetuningUtils {
             bigprompt = util.TextfiletoString(m.getPreamble_file());
             bigprompt += util.createBigString(match);
             bigprompt += userquery;
+            bigprompt += ".  Respond in  " + m.getLanguage() + ".";
+            //bigprompt += " Respond to the user in the language that they request. ";
+
 
             String llmresponse = "";
             try {
