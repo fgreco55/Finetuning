@@ -63,6 +63,15 @@ public class VectorDB {
         } catch (IOException iox) {
             System.err.println("Cannot find config file [" + configfile + "]");
         }
+
+        setparams(prop);
+    }
+
+    public VectorDB(Properties prop) {
+        setparams(prop);
+    }
+
+    private void setparams(Properties prop) {
         this.database = prop.getProperty("vdbservice.database");
         this.collection = prop.getProperty("vdbservice.collection");
         this.host = prop.getProperty("vdbservice.host");

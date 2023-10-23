@@ -1,17 +1,26 @@
 package Utilities;
+/*
+ * FinetuningUtils - Facade over LLM and VectorDB classes
+ *                   There should be no mention of the underlying vector database or the specific model here.
+ *
+ */
 
 import Database.VectorDB;
 import Database.VectorDBException;
 import Model.LLM;
 import Model.LLMCompletionException;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 public class FinetuningUtils {
+    Utility util = new Utility();
     public void insertSentences(VectorDB vdb, LLM llm, String coll, String sent) throws VectorDBException {
-        Utility util = new Utility();
+       // Utility util = new Utility();
 
         List<String> sentlist = util.StringtoSentences(sent);       // sentence list
 
@@ -36,35 +45,35 @@ public class FinetuningUtils {
         return idlist;
     }
 
-    public void populateFromNote(VectorDB v, String collection, LLM m, Utility vut, String note) {
+    public void populateFromNote(VectorDB v, String collection, LLM m, String note) {
         List<String> sents = new ArrayList<>();
         sents.add(note);
         System.out.println("Populating [" + collection + "-" + sents.size() + "] with " + note);
         insert_sentences(v, collection, m, sents);
     }
 
-    public void populateFromURL(VectorDB v, String collection, LLM m, Utility vut, String url) {
-        List<String> sents = vut.URLtoSentences(url);
+    public void populateFromURL(VectorDB v, String collection, LLM m, String url) {
+        List<String> sents = util.URLtoSentences(url);
         System.out.println("Populating [" + collection + "-" + sents.size() + "] with " + url);
         insert_sentences(v, collection, m, sents);
     }
 
-    public void populateFromPDF(VectorDB v, String collection, LLM m, Utility vut, String pdf) throws IOException {
-        List<String> sents = vut.PDFfiletoSentences(pdf);
+    public void populateFromPDF(VectorDB v, String collection, LLM m, String pdf) throws IOException {
+        List<String> sents = util.PDFfiletoSentences(pdf);
         System.out.println("Populating [" + collection + "-" + sents.size() + "] with " + pdf);
         insert_sentences(v, collection, m, sents);
     }
 
-    public void populateFromTextfile(VectorDB v, String collection, LLM m, Utility vut, String textfile) {
-        List<String> sents = vut.TextfiletoSentences(textfile);
+    public void populateFromTextfile(VectorDB v, String collection, LLM m, String textfile) {
+        List<String> sents = util.TextfiletoSentences(textfile);
         System.out.println("Populating [" + collection + "-" + sents.size() + "] with " + textfile);
         insert_sentences(v, collection, m, sents);
     }
 
-    public void populateFromRecording(VectorDB v, String collection, LLM m, Utility vut, String recordingFile) {
+    public void populateFromRecording(VectorDB v, String collection, LLM m, String recordingFile) {
         SpeechTranscribe wt = new SpeechTranscribe(m.getApikey(), m.getSpeech_model());
         String s = wt.transcribe(recordingFile);
-        List<String> sents = vut.StringtoSentences(s);
+        List<String> sents = util.StringtoSentences(s);
         System.out.println("Populating [" + collection + "-" + sents.size() + "] with " + recordingFile);
         insert_sentences(v, collection, m, sents);
     }
@@ -100,14 +109,14 @@ public class FinetuningUtils {
             smallvec.add(m.sendEmbeddingRequest(userquery));
 
             List<String> match;
-            match = v.searchDB_using_targetvectors(coll, smallvec, 5);
+            match = v.searchDB_using_targetvectors(coll, smallvec, 5);          // SHOULD PARAMETERIZE "max" in props
             //System.out.println("Finding nearest neighbors for [" + userquery + "]... \nSTART-----------------------");
             //match.forEach(System.out::println);     // These are the top "max" nearest neighbors
             //System.out.println("Finding nearest neighbors... \nEND---------------------------");
 
             /*
              * Create prompt -  Need a Prompt class - preamble, instructions, contents, format, user-query and Strategy
-             *                  Strategy could be COT, Tree, Reactive...
+             *                  Strategy could be COT, Tree, ReAct...
              */
             String bigprompt = "";
             bigprompt = util.TextfiletoString(m.getPreamble_file());
@@ -125,4 +134,18 @@ public class FinetuningUtils {
             }
             return llmresponse;
         }
+
+    public Properties getConfigProperties(String fname) {
+        Properties prop = new Properties();
+        InputStream in;
+
+        try {
+            in = new FileInputStream(fname);
+            prop.load(in);
+        } catch (IOException iox) {
+            System.err.println("***ERROR: cannot open [" + fname + "] - " + iox.getMessage());
+        }
+
+        return prop;
+    }
 }
