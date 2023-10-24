@@ -191,7 +191,7 @@ public class VectorDB {
     /************************************************************
      Show all the databases in the server
      ***********************************************************/
-    public List<String> show_databases() throws VectorDBException {
+    public List<String> get_databases() throws VectorDBException {
         check_init();
         List<String> dbnames = new ArrayList<>();
         String dbstr = "";
@@ -211,13 +211,17 @@ public class VectorDB {
         return dbnames;
     }
 
+    public String show_databases() throws VectorDBException {
+        return this.get_databases().toString();
+    }
+
     /************************************************************
      If database name exists in the server, return true.
      ***********************************************************/
     public boolean databaseExists(String dbname) throws VectorDBException {
         List<String> databases = new ArrayList<>();
         boolean exists = false;
-        databases = show_databases();
+        databases = get_databases();
         for (int i = 0; i < databases.size(); i++) {
             if (databases.get(i).equalsIgnoreCase(dbname))
                 return true;
@@ -376,10 +380,22 @@ public class VectorDB {
     /************************************************************
      show all the collections in the database
      ***********************************************************/
-    public void show_collections() throws VectorDBException {
+    public String get_collections() throws VectorDBException {
         check_init();
         R<ListCollectionsResponse> cr = mc.listCollections(ListCollectionsParam.newBuilder().build());
         System.out.println("Collections in the DB: " + cr.getData());
+        return cr.getData().toString();
+    }
+    public String show_collections() throws VectorDBException {
+        String buffer = "";
+
+        R<ShowCollectionsResponse> respShowCollections = mc.showCollections(
+            ShowCollectionsParam.newBuilder().build()
+          );
+        for (int i = 0; i < respShowCollections.getData().getCollectionNamesCount(); i++) {
+            buffer += respShowCollections.getData().getCollectionNames(i) + " ";
+        }
+        return buffer;
     }
 
     /************************************************************

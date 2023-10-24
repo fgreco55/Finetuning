@@ -6,8 +6,13 @@ import Model.LLM;
 import Model.LLMCompletionException;
 import Utilities.FinetuningUtils;
 import Utilities.Utility;
+import io.milvus.grpc.ShowCollectionsResponse;
+import io.milvus.param.R;
+import io.milvus.param.collection.ShowCollectionsParam;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 public class PchatService {
@@ -80,6 +85,21 @@ public class PchatService {
         } catch (VectorDBException vex) {
             System.err.println("***ERROR: Cannot drop collection [" + collection + "]");
         }
+    }
+
+
+    public String showcollections() throws VectorDBException{
+        return vdb.show_collections();
+    }
+
+    public String showdatabases() {
+        List<String> dblist = new ArrayList<>();
+        try {
+            dblist = vdb.get_databases();
+        } catch (VectorDBException vex) {
+            System.err.println("***ERROR: Cannot show databases");
+        }
+        return util.listToString(dblist);
     }
 
     public PchatService loadtextfile(String filename) {

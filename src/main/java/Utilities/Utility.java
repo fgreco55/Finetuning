@@ -241,13 +241,25 @@ public class Utility {
         }
         return retvalue;
     }
-
+    /************************************************************
+    *    convert list of Doubles to list of Floats
+    ***********************************************************/
     public List<Float> Double2Float(List<Double> d) {
         List<Float> flist = new ArrayList<>();
         for (int i = 0; i < d.size(); i++) {
             flist.add(d.get(i).floatValue());
         }
         return flist;
+    }
+    /************************************************************
+     *    convert list of strings to space-separated string
+     ***********************************************************/
+    public String listToString(List<String> mylist) {
+        String buffer = "";
+        for (int i = 0; i < mylist.size(); i++) {
+            buffer += mylist.get(i) + " ";
+        }
+        return buffer;
     }
     /************************************************************
      *    getConfigProperties()

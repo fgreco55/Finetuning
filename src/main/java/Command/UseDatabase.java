@@ -22,8 +22,8 @@ public class UseDatabase implements Command {
             ps.getVdb().setDatabase(dbname);
             return 0;
         } else {
-            System.err.println("No database specified.");
-            return retcode;
+            System.out.println(ps.getVdb().getDatabase());
+            return 0;
         }
     }
 }

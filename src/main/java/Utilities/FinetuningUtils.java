@@ -110,6 +110,9 @@ public class FinetuningUtils {
 
             List<String> match;
             match = v.searchDB_using_targetvectors(coll, smallvec, 5);          // SHOULD PARAMETERIZE "max" in props
+            if (match == null) {        // If no matches... e.g, collection is empty or close to empty (less than max results?)
+                return "";
+            }
             //System.out.println("Finding nearest neighbors for [" + userquery + "]... \nSTART-----------------------");
             //match.forEach(System.out::println);     // These are the top "max" nearest neighbors
             //System.out.println("Finding nearest neighbors... \nEND---------------------------");

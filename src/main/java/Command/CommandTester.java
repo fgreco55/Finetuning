@@ -17,18 +17,20 @@ public class CommandTester {
 
         PchatService ps = new PchatService();
 
-        HashMap<String, Command> commands = new HashMap<>();
+        HashMap<String, Command> commands = new HashMap<>();    // loadcommands()??
         commands.put("helloworld", new HelloWorld());
         commands.put("argdumper", new ArgDumper());
         commands.put("collection", new UseCollection(ps));
         commands.put("deletecollection", new DeleteCollection(ps));
-        commands.put("dc", new DeleteCollection(ps));
+        commands.put("dc", new DeleteCollection(ps));           // alias for "deletecollection"
         commands.put("database", new UseDatabase(ps));          // maybe "list" - databases, collections, loaded files, etc??
         commands.put("loadnote", new LoadNote(ps));
         commands.put("loadtextfile", new LoadTextfile(ps));
         commands.put("loadfile", new LoadTextfile(ps));
         commands.put("loadurl", new LoadURL(ps));
+        commands.put("list", new List(ps));
         commands.put("query", new GetCompletion(ps));
+        commands.put("q", new GetCompletion(ps));               // alias for "query"
         commands.put("help", new Help());                       // doesn't work yet...
 
         while (true) {

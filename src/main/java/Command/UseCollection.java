@@ -21,8 +21,8 @@ public class UseCollection implements Command {
             psvc.setCollection(cmd.get(1));
             return 0;
         } else {
-            System.err.println("No collection specified.");
-            return retcode;
+            System.out.println(psvc.getVdb().getCollection());
+            return 0;
         }
     }
 }
