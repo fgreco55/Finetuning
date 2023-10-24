@@ -82,6 +82,29 @@ public class VectorDB {
         this.initialized = true;
     }
 
+    public void setMaxSentenceLength(int maxSentenceLength) {
+        this.maxSentenceLength = maxSentenceLength;
+    }
+
+    /************************************************************
+     * Can't go over this sentence size
+     ***********************************************************/
+    public int getMaxSentenceLength() {
+        return maxSentenceLength;
+    }
+
+    public void setDatabase(String database) {
+        this.database = database;
+    }
+
+    /************************************************************
+     Currently you can not change the database after you create one dynamically
+     ... seems odd to me since RDBMS have been doing this for decades.
+     ***********************************************************/
+    public String getDatabase() {
+        return database;
+    }
+
     /************************************************************
      Connect to the Milvus server.  Right now just using localhost/Docker
      ***********************************************************/
@@ -109,13 +132,6 @@ public class VectorDB {
      *
      ************************************************************/
 
-    /************************************************************
-     Currently you can not change the database after you create one dynamically
-     ... seems odd to me since RDBMS have been doing this for decades.
-     ***********************************************************/
-    public String getDatabase() {
-        return database;
-    }
 
     /************************************************************
      Make sure VDB class is initialized
@@ -215,9 +231,9 @@ public class VectorDB {
     /************************************************************
      Create the field schemas, create the collection schemas in the DB
      Create Milvus collection schema... you need datatype for each field
-        A Milvus Collection is like a RDBMS table.
+     A Milvus Collection is like a RDBMS table.
 
-        TBD - change "sentence" to "chunk"... we may not use sentences in the future.
+     TBD - change "sentence" to "chunk"... we may not use sentences in the future.
      ***********************************************************/
     public void create_collection(String coll, int vecsize) {
         R<RpcStatus> response = null;
@@ -251,7 +267,7 @@ public class VectorDB {
         response = mc.createCollection(createCollectionReq);
         if (response.getStatus() != R.Status.Success.getCode()) {
             System.out.println("***FAILURE: " + response.getMessage());
-        } 
+        }
 
         mc.createPartition(
                 CreatePartitionParam.newBuilder()
@@ -392,7 +408,7 @@ public class VectorDB {
 
     /************************************************************
      insert_entry() - Insert an entry from a collection - NEED TO TEST
-                NEED TO DETECT INSERTING DUPLICATES... need to store hash of sentence and compare to hash of incoming sentence.
+     NEED TO DETECT INSERTING DUPLICATES... need to store hash of sentence and compare to hash of incoming sentence.
      ***********************************************************/
     public void insert_entry(String coll, String sent, List<Float> vec) {
         List<Integer> ilist = new ArrayList<>();
@@ -421,7 +437,7 @@ public class VectorDB {
 
     /************************************************************
      delete_entry() - Delete an entry from a collection where there is a string match - NEED TO TEST - fdg
-                        NEED A BETTER WAY TO DELETE AN ENTRY.
+     NEED A BETTER WAY TO DELETE AN ENTRY.
      ***********************************************************/
     public void delete_entry(String coll, String str) {
         String deleteStr = "sentence = " + "\"" + str + "\"";   // NOT sure if this is a good idea... -fdg
@@ -514,12 +530,6 @@ public class VectorDB {
         return rows;
     }
 
-    /************************************************************
-     * Can't go over this sentence size
-     ***********************************************************/
-    public int getMaxSentenceLength() {
-        return maxSentenceLength;
-    }
 
 /************************************************************
  *
@@ -617,7 +627,7 @@ public class VectorDB {
     }
 
     /******************************************************
-        main() - Just some VectorDB tests...
+     main() - Just some VectorDB tests...
      *****************************************************/
     public static void main(String[] args) throws VectorDBException {
         VectorDB vdb = new VectorDB(DEFAULT_CONFIG);

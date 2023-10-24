@@ -23,6 +23,22 @@ public class PchatService {
         this.openLLM(prop);
     }
 
+    public VectorDB getVdb() {
+        return vdb;
+    }
+
+    public void setVdb(VectorDB vdb) {
+        this.vdb = vdb;
+    }
+
+    public LLM getModel() {
+        return model;
+    }
+
+    public void setModel(LLM model) {
+        this.model = model;
+    }
+
     public void openLLM(Properties prop) {
         try {
             this.model = new LLM(prop);
@@ -47,11 +63,11 @@ public class PchatService {
     }
 
     public PchatService usecollection(String collection) {
-        vdb.setCollection(collection);
         try {
             if (vdb.collectionExists(collection) != true) {
                 vdb.create_collection(collection, model.getVector_size());
             }
+            vdb.setCollection(collection);
         } catch (VectorDBException vex) {
             System.err.println("***ERROR: Cannot create/use collection " + collection);
         }
@@ -77,7 +93,7 @@ public class PchatService {
             futil.populateFromPDF(vdb, vdb.getCollection(), model, pdfname);
             vdb.flush_collection(vdb.getCollection());
         } catch (IOException iox) {
-            System.err.println("***Error: Cannot load PDF file [" + pdfname + "]");
+            System.err.println("***Erråor: Cannot load PDF file [" + pdfname + "]");
         }
         return this;
     }
@@ -114,6 +130,16 @@ public class PchatService {
 
     public PchatService setLanguage(String lang) {
         this.model.setLanguage(lang);
+        return this;
+    }
+
+    public PchatService setDatabase(String dbname) {
+        vdb.setDatabase(dbname);
+        return this;
+    }
+
+    public PchatService setCollection(String collname) {
+        vdb.setCollection(collname);
         return this;
     }
 
