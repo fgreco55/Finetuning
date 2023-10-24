@@ -139,6 +139,15 @@ public class PchatService {
     }
 
     public PchatService setCollection(String collname) {
+        try {
+            if (!vdb.collectionExists(collname)) {
+                vdb.create_collection(collname);
+            }
+        } catch (VectorDBException e) {
+            System.err.println("***ERROR: Cannot set collection [" + collname + "]");
+            throw new RuntimeException(e);
+        }
+
         vdb.setCollection(collname);
         return this;
     }
