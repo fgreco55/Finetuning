@@ -6,7 +6,7 @@ import java.util.List;
 
 public class LoadURL implements Command {
     private static String description = "loadurl URL - loads the text from a webpage into the database given it's URL.";
-    private int retcode = 0;
+    private int retcode = 450;
 
     private PchatService psvc;
     LoadURL(PchatService ps) {

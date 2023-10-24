@@ -18,8 +18,7 @@ public class UseCollection implements Command {
     public int execute(List<String> cmd) {
 
         if (cmd.size() > 1) {
-            String coll = cmd.get(1);
-            psvc.getVdb().setCollection(coll);
+            psvc.setCollection(cmd.get(1));
             return 0;
         } else {
             System.err.println("No collection specified.");

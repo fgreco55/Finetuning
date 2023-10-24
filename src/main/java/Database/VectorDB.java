@@ -37,6 +37,7 @@ public class VectorDB {
     private String collection;
     private boolean initialized = false;
     static final int OPENAI_VECSIZE = 1536;
+    private int vecsize;
     private final static String DEFAULT_CONFIG = "/Users/fgreco/src/Finetuning/src/main/resources/llm.properties";
     private MilvusServiceClient mc;
 
@@ -77,6 +78,7 @@ public class VectorDB {
         this.host = prop.getProperty("vdbservice.host");
         this.port = Integer.parseInt(prop.getProperty("vdbservice.port", "19530"));
         this.maxSentenceLength = Integer.parseInt(prop.getProperty("vdbservice.sentence_size", "5120"));
+        this.vecsize = Integer.parseInt(prop.getProperty("llmservice.vector_size", ""+OPENAI_VECSIZE));
 
         connectToMilvus(this.host, this.port);
         this.initialized = true;
@@ -103,6 +105,14 @@ public class VectorDB {
      ***********************************************************/
     public String getDatabase() {
         return database;
+    }
+
+    public int getVecsize() {
+        return vecsize;
+    }
+
+    public void setVecsize(int vecsize) {
+        this.vecsize = vecsize;
     }
 
     /************************************************************
@@ -287,9 +297,11 @@ public class VectorDB {
 
         if (createIndexR.getStatus() != R.Status.Success.getCode()) {
             System.out.print("***ERROR:  " + createIndexR.getMessage());
-        } else {
-            System.out.println("Success creating the INDEX...");
-        }
+        } 
+    }
+
+    public void create_collection(String coll) {
+        this.create_collection(coll, this.getVecsize());
     }
 
     /*********************************************************************
