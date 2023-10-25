@@ -1,7 +1,8 @@
 package Utilities;
 /*
  * FinetuningUtils - Facade over LLM and VectorDB classes
- *                   There should be no mention of the underlying vector database or the specific model here.
+ *         There should be no mention of the specific underlying vector database or the specific model used
+ *         here in this class.
  *
  */
 
@@ -19,26 +20,6 @@ import java.util.Properties;
 
 public class FinetuningUtils {
     Utility util = new Utility();
-
-    /*public void insertSentences(VectorDB vdb, LLM llm, String coll, String sent) throws VectorDBException {
-
-        List<String> sentlist = util.StringtoSentences(sent);       // sentence list
-
-        if (sentlist.size() == 0) {                                     // don't insert null sentences
-            return;
-        }
-
-        int numsent = sentlist.size();
-        List<Long> sidlist = createIdList(numsent);                 // sentence_id list
-
-        List<List<Float>> emblist = new ArrayList<>();              // embeddings list
-        for (int i = 0; i < numsent; i++) {
-            List<Float> emb = llm.getEmbedding(sent);
-            emblist.add(emb);
-        }
-
-        vdb.insert_collection(coll, sidlist, sentlist, emblist);
-    }*/
 
     public List<Long> createIdList(int num) {
         int START = 2000;
@@ -121,6 +102,7 @@ public class FinetuningUtils {
 
             List<String> match;
             match = v.searchDB_using_targetvectors(coll, smallvec, 5);          // SHOULD PARAMETERIZE "max" in props
+            // NEED TO TEST WHAT HAPPENS WHEN match IS EMPTY...
             /*if (match == null) {        // If no matches... e.g, collection is empty or close to empty (less than max results?)
                 return "";
             }*/
@@ -137,7 +119,6 @@ public class FinetuningUtils {
             bigprompt += util.createBigString(match);
             bigprompt += userquery;
             bigprompt += ".  Respond in  " + m.getLanguage() + ".";
-            //bigprompt += " Respond to the user in the language that they request. ";
 
 
             String llmresponse = "";
