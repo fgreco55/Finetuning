@@ -68,6 +68,7 @@ input, and the completion from the LLM.     [still TBD]
 Notes:
   FAQ type of files should not contain periods, question marks or exclamation marks.  You want the question and answer on the same line.
   Using a sentence delimiter will break apart the line, which is probably not a good thing.  You want the embedding vector for entire question and answer.
+  Currently, the only period in a line should be the very last character.  If not, the sentence parser will include the \n and break the line at the CR.
 
 
 Frank G

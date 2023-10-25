@@ -49,6 +49,8 @@ public class CommandTester {
         commands.put("deletecollection", new DeleteCollection(ps));
         commands.put("dc", new DeleteCollection(ps));           // alias for "deletecollection"
         commands.put("database", new UseDatabase(ps));          // maybe "list" - databases, collections, loaded files, etc??
+        commands.put("language", new Language(ps));
+        commands.put("l", new Language(ps));                    // alias for "language"
         commands.put("loadnote", new LoadNote(ps));
         commands.put("loadtextfile", new LoadTextfile(ps));
         commands.put("loadfile", new LoadTextfile(ps));

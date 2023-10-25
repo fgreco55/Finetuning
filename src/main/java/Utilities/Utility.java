@@ -23,7 +23,7 @@ import java.util.concurrent.Flow;
 public class Utility {
 
     public String URLtoText(String url) {
-        if (!url.startsWith("https://") || !url.startsWith("http://")) {
+        if (!url.startsWith("https://") && !url.startsWith("http://")) {
             System.err.println("***ERROR: Invalid URL protocol.");
             return (String) null;
         }

@@ -26,6 +26,15 @@ public class PchatService {
         Properties prop = futil.getConfigProperties(DEFAULT_CONFIG);
         this.openVectorDB(prop);
         this.openLLM(prop);
+
+        try {
+            String instructions = model.getInstruction_file();           // If there's a system instructions file, use it
+            if (instructions != null) {
+                model.sendCompletionRequest("system", util.TextfiletoString(instructions));
+            }
+        } catch (LLMCompletionException lx) {
+            System.err.println("***ERROR: Cannot send system instructions to the LLM.");
+        }
     }
 
     public VectorDB getVdb() {
@@ -83,7 +92,7 @@ public class PchatService {
         try {
             vdb.drop_collection(collection);
         } catch (VectorDBException vex) {
-            System.err.println("***ERROR: Cannot drop collection [" + collection + "]");
+            System.err.println("***ERROR: Cannot drop collection [" + collection + "] in database [" + vdb.getDatabase() + "].");
         }
     }
 
@@ -153,6 +162,10 @@ public class PchatService {
     public PchatService setLanguage(String lang) {
         this.model.setLanguage(lang);
         return this;
+    }
+
+    public String getLanguage() {
+        return this.model.getLanguage();
     }
 
     public PchatService setDatabase(String dbname) {
