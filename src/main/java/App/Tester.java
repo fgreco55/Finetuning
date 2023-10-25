@@ -55,7 +55,7 @@ public class Tester {
          *  Create some data to insert into the VDB collection
          ****************************************************/
         System.out.println("Populating collection [" + collection + "] ====================================");
-        String fname = "./src/main/resources/faq.txt";
+        String fname = "./src/main/resources/faq-nyjavasig.txt";
         List<String> sents = util.TextfiletoList(fname);
         System.out.println("DEBUG: Textfile " + fname + " has rows: " + sents.size());
         //sents.forEach(System.out::println);
@@ -78,12 +78,10 @@ public class Tester {
         /*
           Insert recording... drum roll...
          */
-        SpeechTranscribe wt = new SpeechTranscribe(model.getApikey(), "whisper-1");
-        String s = wt.transcribe("/Users/fgreco/src/Finetuning/src/main/resources/20230913-nyjavasig-abstract.mp3");
-        futil.insertSentences(vdb, model, collection, s);
+        futil.populateFromRecording(vdb, collection, model,"/Users/fgreco/src/Finetuning/src/main/resources/20230913-nyjavasig-abstract.mp3");
 
         /* Test simple query match  */
-        vdb.queryDB(COLLECTION_NAME, "sentence_id > 0 and sentence_id < 30000", 10L);
+        vdb.queryDB(collection, "sentence_id > 0 and sentence_id < 30000", 10L);
 
         Scanner userinput;
 
@@ -107,7 +105,7 @@ public class Tester {
     /************************************************************
      getCompletion() - just a convenience method
      ***********************************************************/
-    public String getCompletion(LLM m, VectorDB v, String coll, String userquery) throws LLMCompletionException {
+    public String getCompletion(LLM m, VectorDB v, String coll, String userquery) throws LLMCompletionException, VectorDBException {
         Utility util = new Utility();
 
         // Create list of float arrays (list of vectors)... but only need one here (only want one result)

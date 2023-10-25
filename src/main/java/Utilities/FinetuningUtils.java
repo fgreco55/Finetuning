@@ -19,10 +19,14 @@ import java.util.Properties;
 
 public class FinetuningUtils {
     Utility util = new Utility();
-    public void insertSentences(VectorDB vdb, LLM llm, String coll, String sent) throws VectorDBException {
-       // Utility util = new Utility();
+
+    /*public void insertSentences(VectorDB vdb, LLM llm, String coll, String sent) throws VectorDBException {
 
         List<String> sentlist = util.StringtoSentences(sent);       // sentence list
+
+        if (sentlist.size() == 0) {                                     // don't insert null sentences
+            return;
+        }
 
         int numsent = sentlist.size();
         List<Long> sidlist = createIdList(numsent);                 // sentence_id list
@@ -34,7 +38,7 @@ public class FinetuningUtils {
         }
 
         vdb.insert_collection(coll, sidlist, sentlist, emblist);
-    }
+    }*/
 
     public List<Long> createIdList(int num) {
         int START = 2000;
@@ -73,7 +77,11 @@ public class FinetuningUtils {
     public void populateFromRecording(VectorDB v, String collection, LLM m, String recordingFile) {
         SpeechTranscribe wt = new SpeechTranscribe(m.getApikey(), m.getSpeech_model());
         String s = wt.transcribe(recordingFile);
+
         List<String> sents = util.StringtoSentences(s);
+        if (sents.size() == 0)
+            return;
+        
         System.out.println("Populating [" + collection + "-" + sents.size() + "] with " + recordingFile);
         insert_sentences(v, collection, m, sents);
     }
@@ -82,6 +90,9 @@ public class FinetuningUtils {
      * insert_sentences() - Get embeddings for every sentence (chunk) and insert [id, sentence and embedding] arrays
      */
     private void insert_sentences(VectorDB v, String collection, LLM model, List<String> sentences) {
+        if (sentences.size() == 0)
+            return;
+
         List<Long> ids = new ArrayList<>();
         List<List<Float>> veclist = new ArrayList<>();
         for (int i = 0; i < sentences.size(); i++) {
@@ -101,7 +112,7 @@ public class FinetuningUtils {
       * getCompletion() - Given a userquery, find the nearest neighbors (size max)
       */
 
-    public String getCompletion(LLM m, VectorDB v, String coll, String userquery) throws LLMCompletionException {
+    public String getCompletion(LLM m, VectorDB v, String coll, String userquery) throws LLMCompletionException, VectorDBException {
             Utility util = new Utility();
 
             // Create list of float arrays (list of vectors)... but only need one here (only want one result)
@@ -110,9 +121,9 @@ public class FinetuningUtils {
 
             List<String> match;
             match = v.searchDB_using_targetvectors(coll, smallvec, 5);          // SHOULD PARAMETERIZE "max" in props
-            if (match == null) {        // If no matches... e.g, collection is empty or close to empty (less than max results?)
+            /*if (match == null) {        // If no matches... e.g, collection is empty or close to empty (less than max results?)
                 return "";
-            }
+            }*/
             //System.out.println("Finding nearest neighbors for [" + userquery + "]... \nSTART-----------------------");
             //match.forEach(System.out::println);     // These are the top "max" nearest neighbors
             //System.out.println("Finding nearest neighbors... \nEND---------------------------");

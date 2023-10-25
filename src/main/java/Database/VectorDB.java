@@ -15,6 +15,8 @@ import io.milvus.param.highlevel.collection.response.ListCollectionsResponse;
 import io.milvus.param.index.CreateIndexParam;
 import io.milvus.param.partition.CreatePartitionParam;
 import io.milvus.response.*;
+import io.milvus.response.SearchResultsWrapper;
+
 
 import java.io.IOException;
 import java.util.*;
@@ -78,7 +80,7 @@ public class VectorDB {
         this.host = prop.getProperty("vdbservice.host");
         this.port = Integer.parseInt(prop.getProperty("vdbservice.port", "19530"));
         this.maxSentenceLength = Integer.parseInt(prop.getProperty("vdbservice.sentence_size", "5120"));
-        this.vecsize = Integer.parseInt(prop.getProperty("llmservice.vector_size", ""+OPENAI_VECSIZE));
+        this.vecsize = Integer.parseInt(prop.getProperty("llmservice.vector_size", "" + OPENAI_VECSIZE));
 
         connectToMilvus(this.host, this.port);
         this.initialized = true;
@@ -301,7 +303,7 @@ public class VectorDB {
 
         if (createIndexR.getStatus() != R.Status.Success.getCode()) {
             System.out.print("***ERROR:  " + createIndexR.getMessage());
-        } 
+        }
     }
 
     public void create_collection(String coll) {
@@ -386,12 +388,13 @@ public class VectorDB {
         System.out.println("Collections in the DB: " + cr.getData());
         return cr.getData().toString();
     }
+
     public String show_collections() throws VectorDBException {
         String buffer = "";
 
         R<ShowCollectionsResponse> respShowCollections = mc.showCollections(
-            ShowCollectionsParam.newBuilder().build()
-          );
+                ShowCollectionsParam.newBuilder().build()
+        );
         for (int i = 0; i < respShowCollections.getData().getCollectionNamesCount(); i++) {
             buffer += respShowCollections.getData().getCollectionNames(i) + " ";
         }
@@ -616,7 +619,7 @@ public class VectorDB {
      For our Question/Answer application, we only have one element for this list
      max - maximum number of returned matches
      ***********************************************************/
-    public List<String> searchDB_using_targetvectors(String coll, List<List<Float>> vec, int max) {
+    public List<String> searchDB_using_targetvectors(String coll, List<List<Float>> vec, int max) throws VectorDBException{
         loadCollection(coll);
 
         //System.err.println("DEBUG: size of targetVectors: " + vec.size());
@@ -632,10 +635,18 @@ public class VectorDB {
                 .build();
 
         R<SearchResults> resp = mc.search(param);
+        SearchResultsWrapper wrapper;
+
         if (resp.getStatus() != R.Status.Success.getCode()) {
             System.err.println("***ERROR: Cannot Search. " + resp.getMessage());
             return new ArrayList<>();
         } else {
+            wrapper = new SearchResultsWrapper(resp.getData().getResults());
+            //System.err.println("NUM ROWS: " + wrapper.getRowRecords().size());
+            if (wrapper.getRowRecords().size() == 0) {                  // FIX THIS!!! if its 0, it should skip the search...
+                //throw new VectorDBException("No entries match in the database");
+                return new ArrayList<>();
+            }
             return getSearchData(resp, vec.size());     // get the actual data
         }
     }
@@ -717,7 +728,7 @@ public class VectorDB {
      max - maximum number of returned matches
      ***********************************************************/
 
-    public List<String> searchDB(String coll, String target, int max) {
+    public List<String> searchDB(String coll, String target, int max) throws VectorDBException{
         System.err.println("DUMMY CALL TO SearchDB().  Do NOT use this method... only for testing.");
         loadCollection(coll);
         Random random = new Random();

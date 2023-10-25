@@ -7,17 +7,20 @@ package Command;
 import java.util.*;
 
 public class Help implements Command {
+
     private static String description = "Displays all the possible commands.";
     private int retcode = 0;
+    private HashMap<String, Command> cmdlist;
 
-    private static List<String> commands = List.of(
-        "helloworld - Simple test to make sure everything is working",
-        " argdumper - Dumps args",
-        "      help - Show all the legal commands."
-    );
+    public Help(HashMap<String, Command> list) {
+      this.cmdlist = list;
+    }
+    public static String getDescription() {
+        return description;
+    }
 
-    public int execute(List<String> cmd) {
-        cmd.forEach(System.out::println);
-        return cmd.size();
+    @Override
+    public int execute(java.util.List<String> argv) {
+        return 0;
     }
 }

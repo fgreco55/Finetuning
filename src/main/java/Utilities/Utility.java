@@ -1,20 +1,12 @@
 /*********************************************************************
  Utilities and Convenience methods
+ ... need error checking in most of these methods... -fdg
  ********************************************************************/
+
 package Utilities;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.mime.MultipartEntityBuilder;
-import org.apache.http.entity.mime.content.StringBody;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
-import org.apache.http.entity.mime.content.FileBody;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
@@ -29,13 +21,14 @@ import java.util.*;
 import java.util.concurrent.Flow;
 
 public class Utility {
-    public final static int MAX_WHISPER_FILESIZE = 25 * 1024 * 1024;
-    public final static int CHUNKSIZE_WHISPER = 20 * 1024 * 1024;
 
     public String URLtoText(String url) {
+        if (!url.startsWith("https://") || !url.startsWith("http://")) {
+            System.err.println("***ERROR: Invalid URL protocol.");
+            return (String) null;
+        }
         try {
-            // Connect to the URL and retrieve the HTML content
-            Document document = Jsoup.connect(url).get();
+            Document document = Jsoup.connect(url).get();   // Connect to the URL and retrieve the HTML content
             return document.text();
         } catch (IOException e) {
             System.err.println("***ERROR:  Cannot access URL [" + url + "]. " + e.getMessage());
@@ -56,10 +49,8 @@ public class Utility {
             byte[] bytes = Files.readAllBytes(path);
             bigString = new String(bytes, StandardCharsets.UTF_8);
         } catch (IOException e) {
-            System.err.println("***ERROR: " + e.getMessage());
+            System.err.println("***ERROR: Cannot read file. " + e.getMessage());
         }
-
-        //System.out.println("Text of File:\n" + bigString);
         return bigString;
     }
 
@@ -191,7 +182,7 @@ public class Utility {
         return System.getProperty("user.dir");
     }
 
-    public String speechtotextXX(String apikey, String filename) throws IOException, InterruptedException {
+    /*public String speechtotextXX(String apikey, String filename) throws IOException, InterruptedException {
         String endpoint = "https://api.openai.com/v1/audio/transcriptions";
         String model = "whisper-1";
         String retvalue = "";     // return value;
@@ -240,7 +231,7 @@ public class Utility {
             }
         }
         return retvalue;
-    }
+    }*/
     /************************************************************
     *    convert list of Doubles to list of Floats
     ***********************************************************/

@@ -33,7 +33,7 @@ public class List implements Command {
                 }
             }
         } catch (VectorDBException vex) {
-            System.err.println("ERROR: LIST CANNOT HANDLE");
+            System.err.println("***ERROR: list command cannot process the subcommand.");
         }
         return retcode;
     }
