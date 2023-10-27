@@ -121,17 +121,17 @@ public class Tester {
         /*
          * following prompt should be in a Prompt class which encapsulates Prompt strategies. -fdg
          */
-        String bigprompt = "";
+        /*String bigprompt = "";
         bigprompt = util.TextfiletoString(m.getPreamble_file());
         bigprompt += util.createBigString(match);
-        bigprompt += userquery;
+        bigprompt += userquery;*/
 
         String llmresponse = "";
-        try {
-            llmresponse = m.sendCompletionRequest("user", bigprompt);
-        } catch (LLMCompletionException lex) {
-            System.err.println("***ERROR: Cannot send bigprompt to LLM");
-        }
+        llmresponse = m.sendCompletionRequest(userquery,
+                util.TextfiletoString(m.getInstruction_file()),
+                util.listToString(match),
+                "");
+
         return llmresponse;
     }
 }

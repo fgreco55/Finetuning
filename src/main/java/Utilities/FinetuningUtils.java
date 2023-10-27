@@ -94,7 +94,7 @@ public class FinetuningUtils {
      * getCompletion() - Given a userquery, find the nearest neighbors (size max)
      */
 
-    public String getCompletion(@NotNull LLM m, @NotNull VectorDB v, String coll, String userquery) throws LLMCompletionException, VectorDBException {
+    /*public String getCompletion(@NotNull LLM m, @NotNull VectorDB v, String coll, String userquery) throws LLMCompletionException, VectorDBException {
         Utility util = new Utility();
 
         // Create list of float arrays (list of vectors)... but only need one here (since we only want one result)... in the future might need "alternative matches"
@@ -104,17 +104,17 @@ public class FinetuningUtils {
         List<String> match;
         match = v.searchDB_using_targetvectors(coll, smallvec, v.getMaxmatches());
         // NEED TO TEST WHAT HAPPENS WHEN match IS EMPTY...
-            /*if (match == null or match.size() == 0) {        // If no matches... e.g, collection is empty or close to empty (less than max results?)
+            *//*if (match == null or match.size() == 0) {        // If no matches... e.g, collection is empty or close to empty (less than max results?)
                 return "";
-            }*/
+            }*//*
         //System.out.println("Finding nearest neighbors for [" + userquery + "]... \nSTART-----------------------");
         //match.forEach(System.out::println);     // These are the top "max" nearest neighbors
         //System.out.println("Finding nearest neighbors... \nEND---------------------------");
 
-        /*
+        *//*
          * Create prompt -  Need a Prompt class - preamble, instructions, contents, format, user-query and Strategy
          *                  Strategy could be COT, Tree, ReAct...
-         */
+         *//*
         String bigprompt = "";
         bigprompt = util.TextfiletoString(m.getPreamble_file());        // Should be a "system" msg at the bottom of the big prompt - fdg
         bigprompt += util.createBigString(match);
@@ -123,9 +123,9 @@ public class FinetuningUtils {
         bigprompt += "Don’t justify your answers. Don’t give information not mentioned in the CONTEXT INFORMATION"; // should be in a file... fdg
         bigprompt += "  Respond in  " + m.getLanguage() + ".";
 
-        /*
+        *//*
          * Make sure the query is moderated for hate, harassment, self-harm, sexual, or violent content
-         */
+         *//*
         if (isPromptFlagged(m, userquery)) {
             System.err.println("*****FLAGGED*****... [" + userquery + "]");
             return "That type of question or comment is not allowed here. ";
@@ -138,10 +138,9 @@ public class FinetuningUtils {
             System.err.println("***ERROR: Cannot send bigprompt to LLM");
         }
         return llmresponse;
-    }
+    }*/
 
-
-    public String fg_getCompletion(@NotNull LLM m, @NotNull VectorDB v, String coll, String userquery) throws LLMCompletionException, VectorDBException {
+    public String getCompletion(@NotNull LLM m, @NotNull VectorDB v, String coll, String userquery) throws LLMCompletionException, VectorDBException {
         Utility util = new Utility();
         String matches = "";
 
@@ -160,14 +159,15 @@ public class FinetuningUtils {
         matches = util.createBigString(match);                          // assistant msgs
         String sysmsg = util.TextfiletoString(m.getInstruction_file()); // how to behave
 
-        String llmresponse = m.fg_sendCompletionRequest(userquery, matches, sysmsg, m.getHistory());
-        m.setHistory(" " + llmresponse);
+        String llmresponse = m.sendCompletionRequest(userquery, matches, sysmsg, m.getHistoryListAsString());
+        m.addHistory(" " + llmresponse + " " + userquery);    // add user query?? -fdg
 
         /*System.err.println("DEBUG:");
         System.err.println(m.getHistory());*/
 
         return llmresponse;
     }
+
     /*
      * Test to see if the user submitted a nasty prompt
      */

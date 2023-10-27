@@ -1,6 +1,8 @@
 /*********************************************************************
  Utilities and Convenience methods
  ... need error checking in most of these methods... -fdg
+
+ There should be no mention of VectorDB or LLM here.
  ********************************************************************/
 
 package Utilities;
@@ -9,6 +11,8 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.select.Elements;
+import org.jsoup.nodes.Element;
 
 import java.io.*;
 import java.net.http.HttpRequest;
@@ -18,15 +22,21 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.text.BreakIterator;
 import java.util.*;
-import java.util.concurrent.Flow;
 
 public class Utility {
 
-    public String URLtoText(String url) {
-        if (!url.startsWith("https://") && !url.startsWith("http://")) {
-            System.err.println("***ERROR: Invalid URL protocol.");
-            return (String) null;
+    boolean isHTTP(String url) {
+        if (url.startsWith("https://") || url.startsWith("http://")) {
+            return true;
+        } else {
+            System.err.println("***ERROR: Invalid HTTP[S] protocol.");
+            return false;
         }
+    }
+    public String URLtoText(String url) {
+        if ( !isHTTP(url) )
+            return (String) null;
+
         try {
             Document document = Jsoup.connect(url).get();   // Connect to the URL and retrieve the HTML content
             return document.text();
@@ -39,6 +49,54 @@ public class Utility {
     public List<String> URLtoSentences(String url) {
         String urlstring = URLtoText(url);
         return StringtoSentences(urlstring);
+    }
+    public void print(String msg, Object... args) {
+        System.out.println(String.format(msg, args));
+    }
+
+    /*
+     * Following method would be very useful to get entire website (limited by recursion level)
+     */
+    /*public List<String> URLtoLinksRecursive(String url, int maxlevels) {
+        if (maxlevels < 0)
+        List<String> biglist = new ArrayList<>();
+        
+        biglist = URLtoLinks(url);                                  // get all the links on a page
+        int bigsize = biglist.size();
+
+        for (int i = 0; i < bigsize; i++) {
+            List<String> urllist = URLtoLinks(biglist.get(i));      // get links in this url
+            for(int j = 0; j < urllist.size(); j++) {
+                if (!isHTTP(urllist.get(j)))
+                    continue;
+                List<String> rurl = URLtoLinksRecursive(urllist.get(j), --maxlevels);
+                biglist.add(urllist.get(j));
+            }
+            if (++level > maxlevels)
+                return biglist;
+        }
+        return biglist;
+    }*/
+    public List<String> URLtoLinks(String url) {
+        if (!url.startsWith("https://") && !url.startsWith("http://")) {
+            System.err.println("***ERROR: Invalid URL protocol.");
+            return (List<String>) null;
+        }
+        List<String> linksFound = new ArrayList<>();
+        try {
+            Document document = Jsoup.connect(url).get();   // Connect to the URL and retrieve the HTML content
+            Elements links = document.select("a[href]");
+            //print("***** Links: (%d)", links.size());
+            for (Element link : links) {
+                //System.err.println("link: " + link.attr("abs:href"));
+                linksFound.add(link.attr("abs:href"));
+            }
+            return linksFound;
+
+        } catch (IOException e) {
+            System.err.println("***ERROR:  Cannot access URL [" + url + "]. " + e.getMessage());
+            return (List<String>) null;
+        }
     }
 
     public String TextfiletoString(String filename) {
@@ -86,8 +144,6 @@ public class Utility {
     }
 
     public List<String> StringtoSentences(String text) {
-        //System.out.println("INPUT TEXT [" + text + "]");
-
         List<String> sentences = new ArrayList<>();
         if (text == null)
             return sentences;
@@ -182,56 +238,6 @@ public class Utility {
         return System.getProperty("user.dir");
     }
 
-    /*public String speechtotextXX(String apikey, String filename) throws IOException, InterruptedException {
-        String endpoint = "https://api.openai.com/v1/audio/transcriptions";
-        String model = "whisper-1";
-        String retvalue = "";     // return value;
-        File myfile = new File(filename);
-
-        CloseableHttpClient httpClient = HttpClients.createDefault();
-        try {
-            HttpPost request = new HttpPost(endpoint);
-            request.addHeader("Content-Type", "multipart/form-data");
-            request.addHeader("Authorization", "Bearer %s".formatted(apikey));
-
-            HttpEntity entity = MultipartEntityBuilder.create()
-                    .setContentType(ContentType.MULTIPART_FORM_DATA)
-                    .addPart("file", new FileBody(myfile, ContentType.DEFAULT_BINARY))
-                    .addPart("model", new StringBody(model, ContentType.DEFAULT_TEXT))
-                    .addPart("response_format", new StringBody("text", ContentType.DEFAULT_TEXT))
-                    //.addPart("prompt", new StringBody(prompt, ContentType.DEFAULT_TEXT))
-                    .build();
-
-            request.setEntity(entity);
-            CloseableHttpResponse response = httpClient.execute(request);
-
-            try {
-                System.out.println("Response Code : " + response.getStatusLine().getStatusCode());
-                HttpEntity responseEntity = response.getEntity();
-                if (responseEntity != null) {
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(responseEntity.getContent()));
-                    String line;
-                    StringBuilder result = new StringBuilder();
-                    while ((line = reader.readLine()) != null) {
-                        result.append(line);
-                    }
-                    retvalue = String.valueOf(result);
-                    System.out.println("Response Body : " + result);
-                }
-            } finally {
-                response.close();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                httpClient.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        return retvalue;
-    }*/
     /************************************************************
     *    convert list of Doubles to list of Floats
     ***********************************************************/
@@ -294,6 +300,7 @@ public class Utility {
      ***********************************************************/
     public static void main(String[] args) throws IOException, InterruptedException {
         Utility util = new Utility();
+        StopWatch sw = new StopWatch();
 
         String key = util.getApikey("/Users/fgreco/src/Finetuning/src/main/resources/llm.properties");
 
@@ -305,8 +312,12 @@ public class Utility {
         System.out.println(util.URLtoText("http://www.javasig.com"));
         /* Test URL scrape -> sentences */
         util.URLtoSentences("https://www.espn.com").forEach(System.out::println);
+
         /* Test pdf file -> sentences */
+        sw.start();
         util.PDFfiletoSentences("./src/main/resources/testfile.pdf").forEach(System.out::println);
+        sw.stop();
+        System.out.println("elapsed time in milliseconds: " + sw.getElapsedTime());
     }
 }
 

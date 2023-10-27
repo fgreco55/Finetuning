@@ -1,5 +1,6 @@
 package Model;
 
+import Utilities.PromptHistory;
 import Utilities.Utility;
 import com.theokanning.openai.completion.chat.*;
 import com.theokanning.openai.embedding.Embedding;
@@ -52,7 +53,8 @@ public class LLM {
     private String instruction_file;
     private final static String DEFAULT_LANGUAGE = "english";
     private String language = DEFAULT_LANGUAGE;             // what language the LLM should use when conversing with the user;
-    private String history = "";                            // Limited to the token limit of the LLM
+    private PromptHistory historyList;
+    private int promptHistorySize;
 
     /************************************************************
      Constructors
@@ -63,7 +65,7 @@ public class LLM {
         if (token == (String) null)            // Cannot continue without an API key from LLM provider
             throw new LLMCompletionException("You need an API key from the LLM provider");
 
-        setparams(prop);
+        setparams(prop);                      // from the properties file
         this.service = new OpenAiService(this.apikey, Duration.ofSeconds(this.getTimeout()));
     }
 
@@ -83,40 +85,32 @@ public class LLM {
             throw new LLMCompletionException("You need an API key from the LLM provider");
 
         setparams(prop);
-        this.history = "";
         this.service = new OpenAiService(this.apikey, Duration.ofSeconds(this.getTimeout()));
     }
 
-    // Need to restructure the constructors so this one below is the main one    - TBD
-    public LLM(String apikey, String completion_model, String embedding_model, String moderation_model,
+    public LLM(String apikey, String completion_model, String embedding_model, String speech_model, String moderation_model,
                int maxtokens, float temp, float percentSampled,
                int numCompletionsRequested, String pfile, String ifile, int vecsize,
-               String lang, String history) {
+               String lang, int histsize) {
 
-        setSpecificParams(apikey, completion_model, embedding_model, speech_model, moderation_model,
-                maxtokens, temp, top, numCompletionsRequested, false,
-                pfile, ifile, vecsize, lang, history);    // handle stream/SSE TBD ...
-
-        this.service = new OpenAiService(this.apikey);
-    }
-
-    private void setSpecificParams(String token, String cmodel, String emodel, String smodel, String mmodel,
-                                   int maxtokens, float temp, float percentSampled, int numcompletions, boolean stream,
-                                   String pfile, String ifile, int vecsize, String lang, String hist) {
-        this.apikey = token;
-        this.completion_model = cmodel;
-        this.embedding_model = emodel;
-        this.speech_model = smodel;
-        this.moderation_model = mmodel;
+        this.apikey = apikey;
+        this.completion_model = completion_model;
+        this.embedding_model = embedding_model;
+        this.speech_model = speech_model;
+        this.moderation_model = moderation_model;
         this.maxTokensRequested = maxtokens;
         this.temperature = temp;
         this.top = percentSampled;
-        this.numCompletionsRequested = numcompletions;
+        this.numCompletionsRequested = numCompletionsRequested;
         this.stream = false;            // currently only allow non-streaming (SSE TBD)
         this.preamble_file = pfile;
         this.vector_size = vecsize;
         this.language = lang;
-        this.history = hist;
+        
+        this.promptHistorySize = histsize;
+        this.historyList = new PromptHistory(10, histsize);
+
+        this.service = new OpenAiService(this.apikey, Duration.ofSeconds(this.getTimeout()));
     }
 
     private void setparams(Properties prop) {
@@ -135,6 +129,9 @@ public class LLM {
         this.vector_size = Integer.parseInt(prop.getProperty("llmservice.vector_size", VEC_SIZE + ""));
         this.language = prop.getProperty("llmservice.language", DEFAULT_LANGUAGE);
         this.timeout = Long.parseLong(prop.getProperty("llmservice.timeout", "10"));
+
+        this.promptHistorySize = Integer.parseInt(prop.getProperty("llmservice.prompthistory", "10"));
+        this.historyList = new PromptHistory(10, promptHistorySize);
     }
 
 
@@ -260,25 +257,16 @@ public class LLM {
         this.vector_size = vector_size;
     }
 
-    public String getHistory() {
-        return history;
+    public String getHistoryListAsString() {
+        return historyList.toString();
     }
 
     /*
      * Make sure history does not go over tokenlimit * 4 (a token is approx 4 chars)
      *      History should really be a list of Strings that are rotated...  This below is simplistic
      */
-    public void setHistory(String history) {
-        return;
-
-       /* if (history == null)
-            return;
-
-        if (this.history.length() >= tokenlimit * 4) { // a token is approx 4 chars
-            this.history = "";
-        } else {
-            this.history += history;
-        }*/
+    public void addHistory(String entry) {
+        historyList.add(entry);
     }
 
     /************************************************************
@@ -286,7 +274,7 @@ public class LLM {
      ***********************************************************/
 
 
-    public String fg_sendCompletionRequest(String usermsg, String amsg, String sysmsg, String history) {
+    public String sendCompletionRequest(String usermsg, String amsg, String sysmsg, String history) {
         String cmodel = getCompletion_model();      // make sure to use correct completion model
         List<String> results = new ArrayList<>();
         final List<ChatMessage> messages = new ArrayList<>();
@@ -317,11 +305,11 @@ public class LLM {
         for (ChatCompletionChoice s : choices) {
             results.add(s.getMessage().getContent().trim());
         }
-        return results.get(0).toString();
+        return results.get(0).toString();           // only gets the one completion... should get all of them -fdg
     }
 
 
-    public String sendCompletionRequest(String role, String msg) throws LLMCompletionException {
+    /*public String sendCompletionRequest(String role, String msg) throws LLMCompletionException {
         if (!isLegalRole(role))
             throw new LLMCompletionException("Role [" + role + "] not recognizable");
 
@@ -352,7 +340,7 @@ public class LLM {
             results.add(s.getMessage().getContent().trim());
         }
         return results.get(0).toString();
-    }
+    }*/
 
     public List<Float> sendEmbeddingRequest(String msg) {
         Utility util = new Utility();
@@ -423,7 +411,7 @@ public class LLM {
         LLM myllm = new LLM(DEFAULT_CONFIG);
         System.out.println("Completion model: " + myllm.getCompletion_model());
 
-        String s = myllm.sendCompletionRequest("user", "roses are red, violets are");
+        String s = myllm.sendCompletionRequest("roses are red, violets are", "", "", "");
         System.out.println("RESULT: " + s);
 
         System.out.println("Embedding model: " + myllm.getEmbedding_model());

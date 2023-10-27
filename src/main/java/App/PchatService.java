@@ -150,7 +150,7 @@ public class PchatService {
 
         try {
             //answer = futil.getCompletion(model, vdb, vdb.getCollection(), request);
-            answer = futil.fg_getCompletion(model, vdb, vdb.getCollection(), request);      // XXX
+            answer = futil.getCompletion(model, vdb, vdb.getCollection(), request);      // XXX
         } catch (LLMCompletionException lex) {
             System.err.println("***ERROR: Cannot get completion from the model.");
         } catch (VectorDBException vdbx) {

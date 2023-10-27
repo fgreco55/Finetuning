@@ -23,7 +23,7 @@ public class GetCompletion implements Command {
     public int execute(List<String> cmd) {
         String big = "";
 
-        if (cmd.size() > 1) {
+        if (cmd.size() >= 1) {
             for (int i = 0; i < cmd.size(); i++) {
                  big += cmd.get(i) + " ";
             }

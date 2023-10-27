@@ -34,7 +34,6 @@ public class CommandTester {
             if (commands.containsKey(argv.get(0))) {
                 commands.get(mycmd).execute(argv);
             } else {
-                //System.out.println("[" + mycmd + "] is not a recognized command.");
                 commands.get("query").execute(argv);
             }
         }
@@ -59,7 +58,6 @@ public class CommandTester {
         commands.put("loadurl", new LoadURL(ps));
         commands.put("list", new List(ps));
         commands.put("query", new GetCompletion(ps));
-        commands.put("q", new GetCompletion(ps));               // alias for "query"
         commands.put("help", new Help(commands));               // doesn't work yet...
         return commands;
     }
