@@ -24,7 +24,7 @@ public class GetCompletion implements Command {
         String big = "";
 
         if (cmd.size() > 1) {
-            for (int i = 1; i < cmd.size(); i++) {
+            for (int i = 0; i < cmd.size(); i++) {
                  big += cmd.get(i) + " ";
             }
             System.out.println(psvc.getCompletion(big));

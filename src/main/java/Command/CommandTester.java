@@ -34,7 +34,8 @@ public class CommandTester {
             if (commands.containsKey(argv.get(0))) {
                 commands.get(mycmd).execute(argv);
             } else {
-                System.out.println("[" + mycmd + "] is not a recognized command.");
+                //System.out.println("[" + mycmd + "] is not a recognized command.");
+                commands.get("query").execute(argv);
             }
         }
     }
@@ -49,6 +50,7 @@ public class CommandTester {
         commands.put("deletecollection", new DeleteCollection(ps));
         commands.put("dc", new DeleteCollection(ps));           // alias for "deletecollection"
         commands.put("database", new UseDatabase(ps));          // maybe "list" - databases, collections, loaded files, etc??
+        commands.put("image", new Image(ps));
         commands.put("language", new Language(ps));
         commands.put("l", new Language(ps));                    // alias for "language"
         commands.put("loadnote", new LoadNote(ps));

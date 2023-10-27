@@ -4,6 +4,9 @@ import Utilities.Utility;
 import com.theokanning.openai.completion.chat.*;
 import com.theokanning.openai.embedding.Embedding;
 import com.theokanning.openai.embedding.EmbeddingRequest;
+import com.theokanning.openai.image.CreateImageRequest;
+import com.theokanning.openai.moderation.Moderation;
+import com.theokanning.openai.moderation.ModerationRequest;
 import com.theokanning.openai.service.OpenAiService;
 
 import java.io.FileInputStream;
@@ -36,15 +39,20 @@ public class LLM {
     private final static String EMBEDDING_MODEL = "text-embedding-ada-002";
     private final static String COMPLETION_MODEL = "gpt-3.5-turbo";
     private final static String SPEECH_MODEL = "whisper-1";
+    private final static String MODERATION_MODEL = "text-moderation-latest";
     private String completion_model = COMPLETION_MODEL;     // default
     private String embedding_model = EMBEDDING_MODEL;       // default
-    private final static int VEC_SIZE = 1536;
-    private int vector_size = VEC_SIZE;                         // default... dependent on embedding vector length
+    private String moderation_model = MODERATION_MODEL;    // default
+    private final static int TOKEN_LIMIT = 4096;            // token limit for gpt-3.5-turbo
+    private int tokenlimit = TOKEN_LIMIT;                   // max size of the msg packet to the LLM in tokens
+    private final static int VEC_SIZE = 1536;               // size of the embedding vector
+    private int vector_size = VEC_SIZE;                     // default... dependent on embedding vector length
     private String speech_model = SPEECH_MODEL;
     private String preamble_file;
     private String instruction_file;
     private final static String DEFAULT_LANGUAGE = "english";
-    private String language = DEFAULT_LANGUAGE;        // what language the LLM should use when conversing with the user;
+    private String language = DEFAULT_LANGUAGE;             // what language the LLM should use when conversing with the user;
+    private String history = "";                            // Limited to the token limit of the LLM
 
     /************************************************************
      Constructors
@@ -70,34 +78,36 @@ public class LLM {
             System.err.println("Cannot find config file [" + configfile + "]");
         }
 
-       this.apikey = prop.getProperty("llmservice.apikey");
-
+        this.apikey = prop.getProperty("llmservice.apikey");
         if (this.apikey == (String) null)            // Cannot continue without an API key from LLM provider
             throw new LLMCompletionException("You need an API key from the LLM provider");
 
         setparams(prop);
-
+        this.history = "";
         this.service = new OpenAiService(this.apikey, Duration.ofSeconds(this.getTimeout()));
     }
 
     // Need to restructure the constructors so this one below is the main one    - TBD
-    public LLM(String apikey, String completion_model, String embedding_model,
+    public LLM(String apikey, String completion_model, String embedding_model, String moderation_model,
                int maxtokens, float temp, float percentSampled,
-               int numCompletionsRequested, String pfile, String ifile, int vecsize, String lang) {
+               int numCompletionsRequested, String pfile, String ifile, int vecsize,
+               String lang, String history) {
 
-        setSpecificParams(apikey, completion_model, embedding_model, speech_model, maxtokens, temp, top, numCompletionsRequested, false,
-                pfile, ifile, vecsize, lang);    // handle stream/SSE TBD
+        setSpecificParams(apikey, completion_model, embedding_model, speech_model, moderation_model,
+                maxtokens, temp, top, numCompletionsRequested, false,
+                pfile, ifile, vecsize, lang, history);    // handle stream/SSE TBD ...
 
         this.service = new OpenAiService(this.apikey);
     }
 
-    private void setSpecificParams(String token, String cmodel, String emodel, String smodel,
-                           int maxtokens, float temp, float percentSampled, int numcompletions, boolean stream,
-                           String pfile, String ifile, int vecsize, String lang) {
+    private void setSpecificParams(String token, String cmodel, String emodel, String smodel, String mmodel,
+                                   int maxtokens, float temp, float percentSampled, int numcompletions, boolean stream,
+                                   String pfile, String ifile, int vecsize, String lang, String hist) {
         this.apikey = token;
         this.completion_model = cmodel;
         this.embedding_model = emodel;
         this.speech_model = smodel;
+        this.moderation_model = mmodel;
         this.maxTokensRequested = maxtokens;
         this.temperature = temp;
         this.top = percentSampled;
@@ -106,6 +116,7 @@ public class LLM {
         this.preamble_file = pfile;
         this.vector_size = vecsize;
         this.language = lang;
+        this.history = hist;
     }
 
     private void setparams(Properties prop) {
@@ -113,6 +124,7 @@ public class LLM {
         this.completion_model = prop.getProperty("llmservice.completion_model", COMPLETION_MODEL);
         this.embedding_model = prop.getProperty("llmservice.embedding_model", EMBEDDING_MODEL);
         this.speech_model = prop.getProperty("llmservice.speech_model", SPEECH_MODEL);
+        this.moderation_model = prop.getProperty("llmservice.moderation_model", MODERATION_MODEL);    // prob should have 4 classes... fdg
         this.maxTokensRequested = Integer.parseInt(prop.getProperty("llmservice.maxtokensrequested", "512"));
         this.temperature = Float.parseFloat(prop.getProperty("llmservice.temperature", "1.0"));
         this.top = Float.parseFloat(prop.getProperty("llmservice.percentsampled", "1.0"));
@@ -184,6 +196,14 @@ public class LLM {
         this.speech_model = speech_model;
     }
 
+    public String getModeration_model() {
+        return moderation_model;
+    }
+
+    public void setModeration_model(String moderation_model) {
+        this.moderation_model = moderation_model;
+    }
+
     public int getMaxTokensRequested() {
         return maxTokensRequested;
     }
@@ -240,9 +260,67 @@ public class LLM {
         this.vector_size = vector_size;
     }
 
+    public String getHistory() {
+        return history;
+    }
+
+    /*
+     * Make sure history does not go over tokenlimit * 4 (a token is approx 4 chars)
+     *      History should really be a list of Strings that are rotated...  This below is simplistic
+     */
+    public void setHistory(String history) {
+        return;
+
+       /* if (history == null)
+            return;
+
+        if (this.history.length() >= tokenlimit * 4) { // a token is approx 4 chars
+            this.history = "";
+        } else {
+            this.history += history;
+        }*/
+    }
+
     /************************************************************
      Talk to LLM Methods
      ***********************************************************/
+
+
+    public String fg_sendCompletionRequest(String usermsg, String amsg, String sysmsg, String history) {
+        String cmodel = getCompletion_model();      // make sure to use correct completion model
+        List<String> results = new ArrayList<>();
+        final List<ChatMessage> messages = new ArrayList<>();
+
+        ChatMessage cmsg;
+
+        cmsg = new ChatMessage(ChatMessageRole.USER.value(), usermsg);      // user prompt
+        messages.add(cmsg);
+        cmsg = new ChatMessage(ChatMessageRole.SYSTEM.value(), sysmsg);     // how to respond
+        messages.add(cmsg);
+        cmsg = new ChatMessage(ChatMessageRole.ASSISTANT.value(), amsg);    // context from the VDB
+        messages.add(cmsg);
+
+        String lang = "Respond in " + getLanguage() + " ";
+        cmsg = new ChatMessage(ChatMessageRole.SYSTEM.value(), lang);     // what language to use
+        messages.add(cmsg);
+
+        ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
+                .model(cmodel)
+                .messages(messages)
+                .n(this.numCompletionsRequested)          // should be 1 - future we might return more than 1
+                .maxTokens(this.maxTokensRequested)
+                .logitBias(new HashMap<>())               // ???   Not sure what this is for
+                .stream(this.stream)
+                .build();
+
+        List<ChatCompletionChoice> choices = this.service.createChatCompletion(chatCompletionRequest).getChoices();
+        for (ChatCompletionChoice s : choices) {
+            results.add(s.getMessage().getContent().trim());
+        }
+        return results.get(0).toString();
+    }
+
+
     public String sendCompletionRequest(String role, String msg) throws LLMCompletionException {
         if (!isLegalRole(role))
             throw new LLMCompletionException("Role [" + role + "] not recognizable");
@@ -250,11 +328,11 @@ public class LLM {
         String cmodel = getCompletion_model();      // make sure to use correct completion model
         List<String> results = new ArrayList<>();
 
-        final List<ChatMessage> messages = new ArrayList<>();
+        final List<ChatMessage> messages = new ArrayList<>();               // REDO THIS SECTION...
         ChatMessage systemMessage = null;
         if (role.equalsIgnoreCase("user")) {
             systemMessage = new ChatMessage(ChatMessageRole.USER.value(), msg);
-        }   else if (role.equalsIgnoreCase("system")) {
+        } else if (role.equalsIgnoreCase("system")) {
             systemMessage = new ChatMessage(ChatMessageRole.SYSTEM.value(), msg);
         }
 
@@ -319,6 +397,22 @@ public class LLM {
             case "user", "assistant", "system" -> true;
             default -> false;
         };
+    }
+
+    public String sendImageRequest(String prompt) {
+        CreateImageRequest request = CreateImageRequest.builder()
+                .prompt(prompt)
+                .build();
+        return service.createImage(request).getData().get(0).getUrl();
+    }
+
+    public boolean sendModerationRequest(String prompt) {
+        ModerationRequest moderationRequest = ModerationRequest.builder()
+                .input(prompt)
+                .model(getModeration_model())
+                .build();
+        Moderation moderationScore = service.createModeration(moderationRequest).getResults().get(0);
+        return moderationScore.isFlagged();
     }
 
     /************************************************************

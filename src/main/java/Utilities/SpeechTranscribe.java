@@ -121,9 +121,13 @@ public class SpeechTranscribe {
         String key = util.getApikey("/Users/fgreco/src/Finetuning/src/main/resources/llm.properties");
 
         SpeechTranscribe wt = new SpeechTranscribe(key, "whisper-1");
-        String s = wt.transcribe("/Users/fgreco/src/Finetuning/src/main/resources/20230913-nyjavasig-abstract.mp3");
+        String s = wt.transcribe("/Users/fgreco/src/Finetuning/src/main/resources/zoran-groundbreakers.mp3");
+        //String s = wt.transcribe("/Users/fgreco/src/Finetuning/src/main/resources/20230913-nyjavasig-abstract.mp3");
+
 
         System.out.println(s);
+        System.out.println("====================================================");
+        util.StringtoSentences(s);
     }
 }
 

@@ -10,6 +10,7 @@ import Database.VectorDB;
 import Database.VectorDBException;
 import Model.LLM;
 import Model.LLMCompletionException;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -62,7 +63,7 @@ public class FinetuningUtils {
         List<String> sents = util.StringtoSentences(s);
         if (sents.size() == 0)
             return;
-        
+
         System.out.println("Populating [" + collection + "-" + sents.size() + "] with " + recordingFile);
         insert_sentences(v, collection, m, sents);
     }
@@ -89,46 +90,98 @@ public class FinetuningUtils {
             System.err.println("***ERROR: main() - Cannot insert collection");
         }
     }
-     /*
-      * getCompletion() - Given a userquery, find the nearest neighbors (size max)
-      */
+    /*
+     * getCompletion() - Given a userquery, find the nearest neighbors (size max)
+     */
 
-    public String getCompletion(LLM m, VectorDB v, String coll, String userquery) throws LLMCompletionException, VectorDBException {
-            Utility util = new Utility();
+    public String getCompletion(@NotNull LLM m, @NotNull VectorDB v, String coll, String userquery) throws LLMCompletionException, VectorDBException {
+        Utility util = new Utility();
 
-            // Create list of float arrays (list of vectors)... but only need one here (only want one result)
-            List<List<Float>> smallvec = new ArrayList<>();
-            smallvec.add(m.sendEmbeddingRequest(userquery));
+        // Create list of float arrays (list of vectors)... but only need one here (since we only want one result)... in the future might need "alternative matches"
+        List<List<Float>> smallvec = new ArrayList<>();
+        smallvec.add(m.sendEmbeddingRequest(userquery));
 
-            List<String> match;
-            match = v.searchDB_using_targetvectors(coll, smallvec, 5);          // SHOULD PARAMETERIZE "max" in props
-            // NEED TO TEST WHAT HAPPENS WHEN match IS EMPTY...
-            /*if (match == null) {        // If no matches... e.g, collection is empty or close to empty (less than max results?)
+        List<String> match;
+        match = v.searchDB_using_targetvectors(coll, smallvec, v.getMaxmatches());
+        // NEED TO TEST WHAT HAPPENS WHEN match IS EMPTY...
+            /*if (match == null or match.size() == 0) {        // If no matches... e.g, collection is empty or close to empty (less than max results?)
                 return "";
             }*/
-            //System.out.println("Finding nearest neighbors for [" + userquery + "]... \nSTART-----------------------");
-            //match.forEach(System.out::println);     // These are the top "max" nearest neighbors
-            //System.out.println("Finding nearest neighbors... \nEND---------------------------");
+        //System.out.println("Finding nearest neighbors for [" + userquery + "]... \nSTART-----------------------");
+        //match.forEach(System.out::println);     // These are the top "max" nearest neighbors
+        //System.out.println("Finding nearest neighbors... \nEND---------------------------");
 
-            /*
-             * Create prompt -  Need a Prompt class - preamble, instructions, contents, format, user-query and Strategy
-             *                  Strategy could be COT, Tree, ReAct...
-             */
-            String bigprompt = "";
-            bigprompt = util.TextfiletoString(m.getPreamble_file());
-            bigprompt += util.createBigString(match);
-            bigprompt += userquery;
-            bigprompt += ".  Respond in  " + m.getLanguage() + ".";
+        /*
+         * Create prompt -  Need a Prompt class - preamble, instructions, contents, format, user-query and Strategy
+         *                  Strategy could be COT, Tree, ReAct...
+         */
+        String bigprompt = "";
+        bigprompt = util.TextfiletoString(m.getPreamble_file());        // Should be a "system" msg at the bottom of the big prompt - fdg
+        bigprompt += util.createBigString(match);
+        bigprompt += userquery + ".";
 
+        bigprompt += "Don’t justify your answers. Don’t give information not mentioned in the CONTEXT INFORMATION"; // should be in a file... fdg
+        bigprompt += "  Respond in  " + m.getLanguage() + ".";
 
-            String llmresponse = "";
-            try {
-                llmresponse = m.sendCompletionRequest("user", bigprompt);
-            } catch (LLMCompletionException lex) {
-                System.err.println("***ERROR: Cannot send bigprompt to LLM");
-            }
-            return llmresponse;
+        /*
+         * Make sure the query is moderated for hate, harassment, self-harm, sexual, or violent content
+         */
+        if (isPromptFlagged(m, userquery)) {
+            System.err.println("*****FLAGGED*****... [" + userquery + "]");
+            return "That type of question or comment is not allowed here. ";
         }
+
+        String llmresponse = "";
+        try {
+            llmresponse = m.sendCompletionRequest("user", bigprompt);
+        } catch (LLMCompletionException lex) {
+            System.err.println("***ERROR: Cannot send bigprompt to LLM");
+        }
+        return llmresponse;
+    }
+
+
+    public String fg_getCompletion(@NotNull LLM m, @NotNull VectorDB v, String coll, String userquery) throws LLMCompletionException, VectorDBException {
+        Utility util = new Utility();
+        String matches = "";
+
+        List<List<Float>> smallvec = new ArrayList<>();
+        smallvec.add(m.sendEmbeddingRequest(userquery));
+
+        List<String> match;
+        match = v.searchDB_using_targetvectors(coll, smallvec, v.getMaxmatches());
+
+        /* Make sure the query is moderated for hate, harassment, self-harm, sexual, or violent content  */
+        if (isPromptFlagged(m, userquery)) {
+            System.err.println("*****FLAGGED*****... [" + userquery + "]");
+            return "That type of question or comment is not allowed here. ";
+        }
+
+        matches = util.createBigString(match);                          // assistant msgs
+        String sysmsg = util.TextfiletoString(m.getInstruction_file()); // how to behave
+
+        String llmresponse = m.fg_sendCompletionRequest(userquery, matches, sysmsg, m.getHistory());
+        m.setHistory(" " + llmresponse);
+
+        /*System.err.println("DEBUG:");
+        System.err.println(m.getHistory());*/
+
+        return llmresponse;
+    }
+    /*
+     * Test to see if the user submitted a nasty prompt
+     */
+    public boolean isPromptFlagged(LLM model, String prompt) {
+       return model.sendModerationRequest(prompt);
+    }
+
+    /*
+     * Get the URL of an image created by the user prompt
+     */
+    public String getImageURLFromCompletion(LLM model, String prompt) {
+        String url = model.sendImageRequest(prompt);
+        return url;
+    }
 
     public Properties getConfigProperties(String fname) {
         Properties prop = new Properties();

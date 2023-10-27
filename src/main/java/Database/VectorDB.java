@@ -23,14 +23,12 @@ import java.util.*;
 
 public class VectorDB {
     static final int MILVUS_PORT = 19530;                // default port
-    static final String MILVUS_HOST = "localhost";      // default host
-    //static final String MILVUS_DATABASE = "frankdb";    // DB to start off... Milvus doesn't have "use db" yet
-    //static final String COLLECTION_NAME; = "frankcollection";
+    static final String MILVUS_HOST = "localhost";       // default host
     static final String PARTITION_NAME = "sentence_partition";      // chunk-partition??
     static final String COLLECTION_DESCRIPTION = "Simple test of collection insertion and query/search";
     static final String FIELD1 = "sentence_id";         // in the future... change these to "chunk" not sentences
     static final String FIELD2 = "sentence";            // actual sentence stored as meta-data for later retrieval
-    static final String FIELD3 = "sentence_vector";
+    static final String FIELD3 = "sentence_vector";     // the embedding vector
     static final int MAX_SENTENCE_LENGTH = 5120;
     private int maxSentenceLength = MAX_SENTENCE_LENGTH;
     private String host = MILVUS_HOST;
@@ -40,6 +38,7 @@ public class VectorDB {
     private boolean initialized = false;
     static final int OPENAI_VECSIZE = 1536;
     private int vecsize;
+    private int maxmatches;                 // at most, the number of matches found similar to the user prompt
     private final static String DEFAULT_CONFIG = "/Users/fgreco/src/Finetuning/src/main/resources/llm.properties";
     private MilvusServiceClient mc;
 
@@ -81,6 +80,7 @@ public class VectorDB {
         this.port = Integer.parseInt(prop.getProperty("vdbservice.port", "19530"));
         this.maxSentenceLength = Integer.parseInt(prop.getProperty("vdbservice.sentence_size", "5120"));
         this.vecsize = Integer.parseInt(prop.getProperty("llmservice.vector_size", "" + OPENAI_VECSIZE));
+        this.maxmatches = Integer.parseInt(prop.getProperty("vdbservice.maxmatches", "5"));
 
         connectToMilvus(this.host, this.port);
         this.initialized = true;
@@ -117,6 +117,14 @@ public class VectorDB {
         this.vecsize = vecsize;
     }
 
+    public int getMaxmatches() {
+        return maxmatches;
+    }
+
+    public void setMaxmatches(int maxmatches) {
+        this.maxmatches = maxmatches;
+    }
+
     /************************************************************
      Connect to the Milvus server.  Right now just using localhost/Docker
      ***********************************************************/
@@ -131,13 +139,14 @@ public class VectorDB {
     }
 
     /************************************************************
-     handleResponseStatus - internal method for Milvus
+     handleResponseStatus - internal method needed for Milvus
      ***********************************************************/
     private void handleResponseStatus(R<?> r) {
         if (r.getStatus() != R.Status.Success.getCode()) {
             throw new RuntimeException(r.getMessage());
         }
     }
+
     /************************************************************
      *
      *       DATABASE METHODS
@@ -180,7 +189,6 @@ public class VectorDB {
     public void create_database(String dbname) throws VectorDBException {
         check_init();
         R<RpcStatus> response = null;
-        //System.out.println("CREATING DATABASE [" + dbname + "]..............");
         CreateDatabaseParam cparam = CreateDatabaseParam.newBuilder()
                 .withDatabaseName(dbname)
                 .build();
@@ -203,7 +211,6 @@ public class VectorDB {
         if (dbresponse.getStatus() != R.Status.Success.getCode()) {
             System.out.println(dbresponse.getMessage());
         } else {
-            //System.out.println("***Success in listing databases...");
             for (int i = 0; i < dbresponse.getData().getDbNamesCount(); i++) {
                 dbstr = dbresponse.getData().getDbNames(i);
                 dbnames.add(dbstr);
@@ -342,8 +349,7 @@ public class VectorDB {
                 .build();
         R<MutationResult> response = mc.insert(insertParam);
         if (response.getStatus() != R.Status.Success.getCode()) {
-            System.err.println("***ERROR: insert() failed");
-            throw new VectorDBException("Cannot insert() into collection [" + coll + "]");
+            throw new VectorDBException("***ERROR: Cannot insert() into collection [" + coll + "]");
         }
     }
 
@@ -380,7 +386,7 @@ public class VectorDB {
     }
 
     /************************************************************
-     show all the collections in the database
+     get all the collections in the database
      ***********************************************************/
     public String get_collections() throws VectorDBException {
         check_init();
@@ -389,6 +395,9 @@ public class VectorDB {
         return cr.getData().toString();
     }
 
+    /************************************************************
+     show all the collections in the database
+     ***********************************************************/
     public String show_collections() throws VectorDBException {
         String buffer = "";
 
@@ -438,8 +447,10 @@ public class VectorDB {
     }
 
     /************************************************************
-     insert_entry() - Insert an entry from a collection - NEED TO TEST
+     insert_entry() - Insert an entry from a collection
      NEED TO DETECT INSERTING DUPLICATES... need to store hash of sentence and compare to hash of incoming sentence.
+
+     Needs to be tweaked to handle if need to store more metadata -fdg
      ***********************************************************/
     public void insert_entry(String coll, String sent, List<Float> vec) {
         List<Integer> ilist = new ArrayList<>();
@@ -468,7 +479,7 @@ public class VectorDB {
 
     /************************************************************
      delete_entry() - Delete an entry from a collection where there is a string match - NEED TO TEST - fdg
-     NEED A BETTER WAY TO DELETE AN ENTRY.
+     NEED A BETTER WAY TO DELETE AN ENTRY.   possibly delete where sentence matches a regexp?
      ***********************************************************/
     public void delete_entry(String coll, String str) {
         String deleteStr = "sentence = " + "\"" + str + "\"";   // NOT sure if this is a good idea... -fdg
@@ -626,7 +637,7 @@ public class VectorDB {
         SearchParam param = SearchParam.newBuilder()
                 .withCollectionName(coll)
                 .withMetricType(MetricType.L2)
-                .withTopK(max)
+                .withTopK(max)                      // confirm this is the number of MAX MATCHES in the VDB
                 .withVectors(vec)                   // Search closest neighbors to these
                 .withVectorFieldName(FIELD3)        // ... using this field (my embedding array)
                 .withConsistencyLevel(ConsistencyLevelEnum.EVENTUALLY)

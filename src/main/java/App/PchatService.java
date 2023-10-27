@@ -27,14 +27,14 @@ public class PchatService {
         this.openVectorDB(prop);
         this.openLLM(prop);
 
-        try {
+        /*try {
             String instructions = model.getInstruction_file();           // If there's a system instructions file, use it
             if (instructions != null) {
                 model.sendCompletionRequest("system", util.TextfiletoString(instructions));
             }
         } catch (LLMCompletionException lx) {
             System.err.println("***ERROR: Cannot send system instructions to the LLM.");
-        }
+        }*/
     }
 
     public VectorDB getVdb() {
@@ -149,7 +149,8 @@ public class PchatService {
         String answer = "";
 
         try {
-            answer = futil.getCompletion(model, vdb, vdb.getCollection(), request);
+            //answer = futil.getCompletion(model, vdb, vdb.getCollection(), request);
+            answer = futil.fg_getCompletion(model, vdb, vdb.getCollection(), request);      // XXX
         } catch (LLMCompletionException lex) {
             System.err.println("***ERROR: Cannot get completion from the model.");
         } catch (VectorDBException vdbx) {
@@ -185,6 +186,13 @@ public class PchatService {
 
         vdb.setCollection(collname);
         return this;
+    }
+    public String getImageURL(String prompt) {
+        return futil.getImageURLFromCompletion(model, prompt);
+    }
+
+    public boolean isPromptFlaggedByModeration(String prompt) {
+        return futil.isPromptFlagged(model, prompt);
     }
 
     /*
