@@ -30,6 +30,8 @@ another type, eg, html tags, in the future.   [see sentence parser in Utility.ja
    llmservice.timeout=60
    # embedding vector length - dependent on embedding model
    llmservice.vector_size=1536
+   # size of the LRU - history is added to the user prompt
+   llmservice.prompthistory=10
 
    # you could put an FAQ here
    llmservice.preamble=/Users/fgreco/src/Finetuning/src/main/resources/preamble-faq.txt

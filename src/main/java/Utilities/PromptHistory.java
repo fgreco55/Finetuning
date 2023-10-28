@@ -10,7 +10,6 @@ public class PromptHistory {
     public PromptHistory(LRUCache<Integer, String> lc) {
         this.cache = lc;
     }
-
     public PromptHistory(int capacity) {
         cache = new LRUCache<>(capacity);
     }
@@ -24,8 +23,11 @@ public class PromptHistory {
     }
 
     public void add(String s) {
-        if (counter++ > maxcount)
+        if (counter++ > maxcount) {
             counter = 0;
+            System.err.println("-=-=-=-=-=-> HISTORY COUNTER CLEARED... HISTORY STILL INTACT");
+        }
+
         cache.put(counter, s);      // Add new one... push oldest one out
     }
 

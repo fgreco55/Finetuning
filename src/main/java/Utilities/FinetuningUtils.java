@@ -162,9 +162,6 @@ public class FinetuningUtils {
         String llmresponse = m.sendCompletionRequest(userquery, matches, sysmsg, m.getHistoryListAsString());
         m.addHistory(" " + llmresponse + " " + userquery);    // add user query?? -fdg
 
-        /*System.err.println("DEBUG:");
-        System.err.println(m.getHistory());*/
-
         return llmresponse;
     }
 

@@ -10,9 +10,7 @@ import com.theokanning.openai.moderation.Moderation;
 import com.theokanning.openai.moderation.ModerationRequest;
 import com.theokanning.openai.service.OpenAiService;
 
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.time.Duration;
 import java.util.*;
 
@@ -106,7 +104,7 @@ public class LLM {
         this.preamble_file = pfile;
         this.vector_size = vecsize;
         this.language = lang;
-        
+
         this.promptHistorySize = histsize;
         this.historyList = new PromptHistory(10, histsize);
 
@@ -308,39 +306,9 @@ public class LLM {
         return results.get(0).toString();           // only gets the one completion... should get all of them -fdg
     }
 
-
-    /*public String sendCompletionRequest(String role, String msg) throws LLMCompletionException {
-        if (!isLegalRole(role))
-            throw new LLMCompletionException("Role [" + role + "] not recognizable");
-
-        String cmodel = getCompletion_model();      // make sure to use correct completion model
-        List<String> results = new ArrayList<>();
-
-        final List<ChatMessage> messages = new ArrayList<>();               // REDO THIS SECTION...
-        ChatMessage systemMessage = null;
-        if (role.equalsIgnoreCase("user")) {
-            systemMessage = new ChatMessage(ChatMessageRole.USER.value(), msg);
-        } else if (role.equalsIgnoreCase("system")) {
-            systemMessage = new ChatMessage(ChatMessageRole.SYSTEM.value(), msg);
-        }
-
-        messages.add(systemMessage);
-        ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
-                .model(cmodel)
-                .messages(messages)
-                .n(this.numCompletionsRequested)          // should be 1 - future we might return more than 1
-                .maxTokens(this.maxTokensRequested)
-                .logitBias(new HashMap<>())               // ???   Not sure what this is for
-                .stream(this.stream)
-                .build();
-        List<ChatCompletionChunk> chunks = new ArrayList<>();
-
-        List<ChatCompletionChoice> choices = this.service.createChatCompletion(chatCompletionRequest).getChoices();
-        for (ChatCompletionChoice s : choices) {
-            results.add(s.getMessage().getContent().trim());
-        }
-        return results.get(0).toString();
-    }*/
+    /*
+     * Ask for embedding vector for a given string
+     */
 
     public List<Float> sendEmbeddingRequest(String msg) {
         Utility util = new Utility();
@@ -387,6 +355,9 @@ public class LLM {
         };
     }
 
+    /*
+     * Send request to get an image (need to investigate where these are stored...)
+     */
     public String sendImageRequest(String prompt) {
         CreateImageRequest request = CreateImageRequest.builder()
                 .prompt(prompt)
@@ -394,6 +365,9 @@ public class LLM {
         return service.createImage(request).getData().get(0).getUrl();
     }
 
+    /*
+     * Send request to make sure the requests are appropriate (ie, moderated)
+     */
     public boolean sendModerationRequest(String prompt) {
         ModerationRequest moderationRequest = ModerationRequest.builder()
                 .input(prompt)
