@@ -25,7 +25,7 @@ public class PromptHistory {
     public void add(String s) {
         if (counter++ > maxcount) {
             counter = 0;
-            System.err.println("-=-=-=-=-=-> HISTORY COUNTER CLEARED... HISTORY STILL INTACT");
+            //System.err.println("-=-=-=-=-=-> HISTORY COUNTER CLEARED... HISTORY STILL INTACT");
         }
 
         cache.put(counter, s);      // Add new one... push oldest one out

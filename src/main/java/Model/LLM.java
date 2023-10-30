@@ -14,6 +14,8 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.*;
 
+import static java.util.Map.entry;
+
 /************************************************************
  LLM - Large Language Model abstraction
 
@@ -53,6 +55,7 @@ public class LLM {
     private String language = DEFAULT_LANGUAGE;             // what language the LLM should use when conversing with the user;
     private PromptHistory historyList;
     private int promptHistorySize;
+    private int webloader_levels;
 
     /************************************************************
      Constructors
@@ -89,7 +92,7 @@ public class LLM {
     public LLM(String apikey, String completion_model, String embedding_model, String speech_model, String moderation_model,
                int maxtokens, float temp, float percentSampled,
                int numCompletionsRequested, String pfile, String ifile, int vecsize,
-               String lang, int histsize) {
+               String lang, int histsize, int weblevels) {
 
         this.apikey = apikey;
         this.completion_model = completion_model;
@@ -107,6 +110,7 @@ public class LLM {
 
         this.promptHistorySize = histsize;
         this.historyList = new PromptHistory(10, histsize);
+        this.webloader_levels = weblevels;
 
         this.service = new OpenAiService(this.apikey, Duration.ofSeconds(this.getTimeout()));
     }
@@ -130,6 +134,7 @@ public class LLM {
 
         this.promptHistorySize = Integer.parseInt(prop.getProperty("llmservice.prompthistory", "10"));
         this.historyList = new PromptHistory(10, promptHistorySize);
+        this.webloader_levels = Integer.parseInt((prop.getProperty("llmservice.webloader_levels", "1")));
     }
 
 
@@ -255,6 +260,14 @@ public class LLM {
         this.vector_size = vector_size;
     }
 
+    public int getWebloader_levels() {
+        return webloader_levels;
+    }
+
+    public void setWebloader_levels(int webloader_levels) {
+        this.webloader_levels = webloader_levels;
+    }
+
     public String getHistoryListAsString() {
         return historyList.toString();
     }
@@ -290,12 +303,36 @@ public class LLM {
         cmsg = new ChatMessage(ChatMessageRole.SYSTEM.value(), lang);     // what language to use
         messages.add(cmsg);
 
+        /*System.err.println("     User Msg [" + usermsg + "]");
+        System.err.println("   System Msg [" + sysmsg + "]");
+        System.err.println("Assistant Msg [" + amsg + "]");
+        System.err.println("   System Msg [" + lang + "]");*/
+
+        Map<String, Integer> logmap = new HashMap<>();
+        // experiment with log bias map
+        /*logmap = Map.ofEntries(
+                entry("33156", 5),        // machine
+                entry("6975", 5),         // learning
+                entry("21075", 5),        // artificial
+                entry("11478", 5),        // intelligence
+                entry("5655", 5),         // deep
+                entry("4816", 5),         // net
+                entry("2641", 5),          // ts
+                entry("5252", -100),        // las        avoid these tokens
+                entry("56057", -100),        // agna
+                entry("17604", -100),       // cheese
+                entry("45419", -100),       // Cheese
+                entry("4647", -100),        //  mo
+                entry("96982", -100)        // zzarella
+        );*/
+
         ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
                 .model(cmodel)
                 .messages(messages)
                 .n(this.numCompletionsRequested)          // should be 1 - future we might return more than 1
                 .maxTokens(this.maxTokensRequested)
-                .logitBias(new HashMap<>())               // ???   Not sure what this is for
+                //.logitBias(new HashMap<>())               // empty map for logit_bias (the likelihood of tokens appearing in the completion)    -100 (ban) to +100 (exclusively show)
+                .logitBias(logmap)                 // empty map for logit_bias (the likelihood of tokens appearing in the completion)    -100 (ban) to +100 (exclusively show)
                 .stream(this.stream)
                 .build();
 

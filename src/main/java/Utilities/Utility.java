@@ -29,11 +29,11 @@ public class Utility {
         if (url.startsWith("https://") || url.startsWith("http://")) {
             return true;
         } else {
-            System.err.println("***ERROR: Invalid HTTP[S] protocol.");
+            //System.err.println("***ERROR: Invalid HTTP[S] protocol. [" + url + "]");
             return false;
         }
     }
-    public String URLtoText(String url) {
+    public String URLtoString(String url) {
         if ( !isHTTP(url) )
             return (String) null;
 
@@ -47,7 +47,7 @@ public class Utility {
     }
 
     public List<String> URLtoSentences(String url) {
-        String urlstring = URLtoText(url);
+        String urlstring = URLtoString(url);
         return StringtoSentences(urlstring);
     }
     public void print(String msg, Object... args) {
@@ -57,29 +57,10 @@ public class Utility {
     /*
      * Following method would be very useful to get entire website (limited by recursion level)
      */
-    /*public List<String> URLtoLinksRecursive(String url, int maxlevels) {
-        if (maxlevels < 0)
-        List<String> biglist = new ArrayList<>();
-        
-        biglist = URLtoLinks(url);                                  // get all the links on a page
-        int bigsize = biglist.size();
-
-        for (int i = 0; i < bigsize; i++) {
-            List<String> urllist = URLtoLinks(biglist.get(i));      // get links in this url
-            for(int j = 0; j < urllist.size(); j++) {
-                if (!isHTTP(urllist.get(j)))
-                    continue;
-                List<String> rurl = URLtoLinksRecursive(urllist.get(j), --maxlevels);
-                biglist.add(urllist.get(j));
-            }
-            if (++level > maxlevels)
-                return biglist;
-        }
-        return biglist;
-    }*/
+    
     public List<String> URLtoLinks(String url) {
-        if (!url.startsWith("https://") && !url.startsWith("http://")) {
-            System.err.println("***ERROR: Invalid URL protocol.");
+        if (!isHTTP(url))  {
+            //System.err.println("***ERROR: Invalid URL protocol. [" + url + "");
             return (List<String>) null;
         }
         List<String> linksFound = new ArrayList<>();
@@ -89,7 +70,10 @@ public class Utility {
             //print("***** Links: (%d)", links.size());
             for (Element link : links) {
                 //System.err.println("link: " + link.attr("abs:href"));
-                linksFound.add(link.attr("abs:href"));
+                String href = link.attr("abs:href");
+                if (isHTTP(href)) {
+                    linksFound.add(href);
+                }
             }
             return linksFound;
 
@@ -309,7 +293,7 @@ public class Utility {
         /* Test textfile->sentences parser */
         util.TextfiletoSentences("./src/main/resources/testfile.txt").forEach(System.out::println);
         /* Test URL scrape -> text */
-        System.out.println(util.URLtoText("http://www.javasig.com"));
+        System.out.println(util.URLtoString("http://www.javasig.com"));
         /* Test URL scrape -> sentences */
         util.URLtoSentences("https://www.espn.com").forEach(System.out::println);
 

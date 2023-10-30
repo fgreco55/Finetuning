@@ -11,6 +11,7 @@ import Database.VectorDBException;
 import Model.LLM;
 import Model.LLMCompletionException;
 import org.jetbrains.annotations.NotNull;
+import org.jsoup.nodes.Element;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -20,7 +21,9 @@ import java.util.List;
 import java.util.Properties;
 
 public class FinetuningUtils {
-    Utility util = new Utility();
+    private Utility util = new Utility();
+    private LoadedResources lresources = new LoadedResources();
+
 
     public List<Long> createIdList(int num) {
         int START = 2000;
@@ -42,6 +45,40 @@ public class FinetuningUtils {
         List<String> sents = util.URLtoSentences(url);
         System.out.println("Populating [" + collection + "-" + sents.size() + "] with " + url);
         insert_sentences(v, collection, m, sents);
+    }
+
+    /*
+     * populatefromWebsite() - recursive call to load all the links from a website.  maxlevels should be low (1 or 2) or else unrelated info will be added
+     */
+    public void populatefromWebsite(VectorDB v, String collection, LLM m, String websiteURL, int currLevel, int maxLevels) {
+
+        if (currLevel == maxLevels) {
+            return;
+        }
+
+        /*for(int i = 0; i < currLevel; i++) {
+            System.err.print("+-----> ");
+        }
+        System.err.println("LEVEL: " + currLevel + " URL: " + websiteURL );*/
+        if (lresources.alreadyLoaded(websiteURL))               // This should be generalized for all resources -fdg
+            return;
+        else
+            lresources.addResource(websiteURL);
+
+        this.populateFromURL(v, collection, m, websiteURL);     // This is STUFF
+
+        List<String> links = util.URLtoLinks(websiteURL);
+
+        if (links == (List<String>)null) {
+            System.err.println("DEBUG----------- links is NULL");
+            return;
+        }
+
+        for (String link : links) {
+            //populateFromURL(v, collection, m, link);
+            //System.out.println("Loading link: " + link + " at Level " + currLevel);     // simulated action
+            populatefromWebsite(v, collection, m, link, currLevel+1, maxLevels);
+        }
     }
 
     public void populateFromPDF(VectorDB v, String collection, LLM m, String pdf) throws IOException {
@@ -93,52 +130,6 @@ public class FinetuningUtils {
     /*
      * getCompletion() - Given a userquery, find the nearest neighbors (size max)
      */
-
-    /*public String getCompletion(@NotNull LLM m, @NotNull VectorDB v, String coll, String userquery) throws LLMCompletionException, VectorDBException {
-        Utility util = new Utility();
-
-        // Create list of float arrays (list of vectors)... but only need one here (since we only want one result)... in the future might need "alternative matches"
-        List<List<Float>> smallvec = new ArrayList<>();
-        smallvec.add(m.sendEmbeddingRequest(userquery));
-
-        List<String> match;
-        match = v.searchDB_using_targetvectors(coll, smallvec, v.getMaxmatches());
-        // NEED TO TEST WHAT HAPPENS WHEN match IS EMPTY...
-            *//*if (match == null or match.size() == 0) {        // If no matches... e.g, collection is empty or close to empty (less than max results?)
-                return "";
-            }*//*
-        //System.out.println("Finding nearest neighbors for [" + userquery + "]... \nSTART-----------------------");
-        //match.forEach(System.out::println);     // These are the top "max" nearest neighbors
-        //System.out.println("Finding nearest neighbors... \nEND---------------------------");
-
-        *//*
-         * Create prompt -  Need a Prompt class - preamble, instructions, contents, format, user-query and Strategy
-         *                  Strategy could be COT, Tree, ReAct...
-         *//*
-        String bigprompt = "";
-        bigprompt = util.TextfiletoString(m.getPreamble_file());        // Should be a "system" msg at the bottom of the big prompt - fdg
-        bigprompt += util.createBigString(match);
-        bigprompt += userquery + ".";
-
-        bigprompt += "Don’t justify your answers. Don’t give information not mentioned in the CONTEXT INFORMATION"; // should be in a file... fdg
-        bigprompt += "  Respond in  " + m.getLanguage() + ".";
-
-        *//*
-         * Make sure the query is moderated for hate, harassment, self-harm, sexual, or violent content
-         *//*
-        if (isPromptFlagged(m, userquery)) {
-            System.err.println("*****FLAGGED*****... [" + userquery + "]");
-            return "That type of question or comment is not allowed here. ";
-        }
-
-        String llmresponse = "";
-        try {
-            llmresponse = m.sendCompletionRequest("user", bigprompt);
-        } catch (LLMCompletionException lex) {
-            System.err.println("***ERROR: Cannot send bigprompt to LLM");
-        }
-        return llmresponse;
-    }*/
 
     public String getCompletion(@NotNull LLM m, @NotNull VectorDB v, String coll, String userquery) throws LLMCompletionException, VectorDBException {
         Utility util = new Utility();

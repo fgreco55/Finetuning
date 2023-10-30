@@ -56,6 +56,8 @@ public class CommandTester {
         commands.put("loadtextfile", new LoadTextfile(ps));
         commands.put("loadfile", new LoadTextfile(ps));
         commands.put("loadurl", new LoadURL(ps));
+        commands.put("loadwebsite", new LoadWebsite(ps));
+        commands.put("lw", new LoadWebsite(ps));                // alias for "loadwebsite"
         commands.put("list", new List(ps));
         commands.put("query", new GetCompletion(ps));
         commands.put("help", new Help(commands));               // doesn't work yet...

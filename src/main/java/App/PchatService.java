@@ -26,15 +26,6 @@ public class PchatService {
         Properties prop = futil.getConfigProperties(DEFAULT_CONFIG);
         this.openVectorDB(prop);
         this.openLLM(prop);
-
-        /*try {
-            String instructions = model.getInstruction_file();           // If there's a system instructions file, use it
-            if (instructions != null) {
-                model.sendCompletionRequest("system", util.TextfiletoString(instructions));
-            }
-        } catch (LLMCompletionException lx) {
-            System.err.println("***ERROR: Cannot send system instructions to the LLM.");
-        }*/
     }
 
     public VectorDB getVdb() {
@@ -133,6 +124,11 @@ public class PchatService {
         return this;
     }
 
+    public PchatService loadwebsite(String urlname) {
+            futil.populatefromWebsite(vdb, vdb.getCollection(), model, urlname, 0, getModel().getWebloader_levels());
+            vdb.flush_collection(vdb.getCollection());
+            return this;
+        }
     public PchatService loadrecording(String recpath) {
         futil.populateFromRecording(vdb, vdb.getCollection(), model, recpath);
         vdb.flush_collection(vdb.getCollection());
@@ -205,7 +201,7 @@ public class PchatService {
 
         //ps.usecollection("dncollection");
         ps.usedatabase("frankdb")
-                .usecollection("trialcollection")
+                .usecollection("deepnetts")
                 .setLanguage("english");
 
         ps.loadurl("https://www.deepnetts.com/");
