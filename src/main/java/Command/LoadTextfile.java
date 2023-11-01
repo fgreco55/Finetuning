@@ -17,10 +17,15 @@ public class LoadTextfile implements Command {
 
         if (cmd.size() > 1) {
             String tname = cmd.get(1);
-            psvc.loadtextfile(tname);
+
+            if (tname.toLowerCase().endsWith(".pdf")) {
+                psvc.loadpdf(tname);
+            } else {
+                psvc.loadtextfile(tname);
+            }
             return 0;
         } else {
-            String err = "***ERROR: No text file specified.";
+            String err = "***ERROR: No file (.txt or .pdf) specified.";
             System.err.println(err);
             return retcode;
         }

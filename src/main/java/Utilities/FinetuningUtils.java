@@ -135,11 +135,8 @@ public class FinetuningUtils {
         Utility util = new Utility();
         String matches = "";
 
-        List<List<Float>> smallvec = new ArrayList<>();
+        List<List<Float>> smallvec = new ArrayList<>();         // get the embedding vector for the user's prompt
         smallvec.add(m.sendEmbeddingRequest(userquery));
-
-        List<String> match;
-        match = v.searchDB_using_targetvectors(coll, smallvec, v.getMaxmatches());
 
         /* Make sure the query is moderated for hate, harassment, self-harm, sexual, or violent content  */
         if (isPromptFlagged(m, userquery)) {
@@ -147,15 +144,45 @@ public class FinetuningUtils {
             return "That type of question or comment is not allowed here. ";
         }
 
-        matches = util.createBigString(match);                          // assistant msgs
-        String sysmsg = util.TextfiletoString(m.getInstruction_file()); // how to behave
+        // Find the matching strings in the VDB
+        List<String> match = v.searchDB_using_targetvectors(coll, smallvec, v.getMaxmatches());
+        for (String s: match)
+            m.addUserHistory(s);            // Add VDB matches to user history
+        //m.addUserHistory(userquery);        // Add user query to the user history      USER
 
-        String llmresponse = m.sendCompletionRequest(userquery, matches, sysmsg, m.getHistoryListAsString());
-        m.addHistory(" " + llmresponse + " " + userquery);    // add user query?? -fdg
+        m.setSystemHistoryList(new History());                                  //      SYSTEM
+        m.getSystemHistoryList().add(util.TextfiletoString(m.getInstruction_file()));
+
+        String llmresponse = m.sendCompletionRequest(m.getUserHistoryList(), m.getAsstHistoryList(), m.getSystemHistoryList(), userquery);
+
+        m.addAsstHistory(llmresponse);      // Add to the asst list                   ASSISTANT
 
         return llmresponse;
     }
+    /*public String getCompletionXX(@NotNull LLM m, @NotNull VectorDB v, String coll, String userquery) throws LLMCompletionException, VectorDBException {
+      Utility util = new Utility();
+      String matches = "";
 
+      List<List<Float>> smallvec = new ArrayList<>();
+      smallvec.add(m.sendEmbeddingRequest(userquery));
+
+      List<String> match;
+      match = v.searchDB_using_targetvectors(coll, smallvec, v.getMaxmatches());
+
+      *//* Make sure the query is moderated for hate, harassment, self-harm, sexual, or violent content  *//*
+      if (isPromptFlagged(m, userquery)) {
+          System.err.println("*****FLAGGED*****... [" + userquery + "]");
+          return "That type of question or comment is not allowed here. ";
+      }
+
+      matches = util.createBigString(match);                          // assistant msgs
+      String sysmsg = util.TextfiletoString(m.getInstruction_file()); // how to behave
+
+      String llmresponse = m.sendCompletionRequest(userquery, matches, sysmsg, m.getHistoryListAsString());
+      m.addHistory(" " + llmresponse + " " + userquery);    // add user query?? -fdg
+
+      return llmresponse;
+  }*/
     /*
      * Test to see if the user submitted a nasty prompt
      */

@@ -201,14 +201,10 @@ public class PchatService {
 
         //ps.usecollection("dncollection");
         ps.usedatabase("frankdb")
-                .usecollection("deepnetts")
+                .usecollection("testcollection")
                 .setLanguage("english");
 
         ps.loadurl("https://www.deepnetts.com/");
-       /* ps.loadtextfile("./src/main/resources/faq-deepnetts.txt");
-        ps.loadnote("Frank and Zoran meet via Zoom every Saturday");
-        ps.loadurl("https://www.deepnetts.com/about-us/");
-        ps.loadurl("https://www.jcp.org/en/jsr/detail?id=381");*/
 
         String in, out;
 
