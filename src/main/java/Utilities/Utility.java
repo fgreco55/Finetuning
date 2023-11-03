@@ -233,6 +233,14 @@ public class Utility {
         return flist;
     }
     /************************************************************
+     *    convert comma-separated string into a List of strings
+     ***********************************************************/
+    public List<String> stringToList(String input) {
+        String[] items = input.split("\\s*,\\s*");
+        return Arrays.asList(items);
+    }
+    
+    /************************************************************
      *    convert list of strings to space-separated string
      ***********************************************************/
     public String listToString(List<String> mylist) {
@@ -243,18 +251,19 @@ public class Utility {
         return buffer;
     }
     /************************************************************
-     *    getConfigProperties()
+     *    getConfigProperties() - load properties from a file
      ***********************************************************/
-    public Properties getConfigProperties(String fname) throws IOException {
+    public Properties getConfigProperties(String fname)  {
         Properties prop = new Properties();
-        InputStream in = new FileInputStream(fname);
+        InputStream in;
 
-        prop.load(in);
+        try {
+            in = new FileInputStream(fname);
+            prop.load(in);
+        } catch (IOException iox) {
+            System.err.println("***ERROR: cannot open [" + fname + "] - " + iox.getMessage());
+        }
 
-        /*for (Enumeration e = prop.propertyNames(); e.hasMoreElements(); ) {
-            String key = e.nextElement().toString();
-            System.out.println(key + " = " + prop.getProperty(key));
-        }*/
         return prop;
     }
 
@@ -262,12 +271,8 @@ public class Utility {
      *    getApikey() - from a known place
      ***********************************************************/
     public String getApikey(String configfile) {
-        Properties prop = null;
-        try {
-            prop = getConfigProperties(configfile);
-        } catch (IOException iox) {
-            System.err.println("Cannot find config file [" + configfile + "]");
-        }
+        Properties prop = getConfigProperties(configfile);
+
         String token = prop.getProperty("llmservice.apikey");
 
         if (token == (String) null) {           // Cannot continue without an API key from LLM provider

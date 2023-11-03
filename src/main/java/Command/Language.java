@@ -7,7 +7,7 @@ import java.util.List;
 public class Language implements Command {
     private PchatService psvc;
     private int retcode = 800;    // 0 if no error
-    private static String description = "lang - Change the output language.";
+    private static String description = "lang [language] - Change the output language.";
 
     Language(PchatService ps) {
         this.psvc = ps;

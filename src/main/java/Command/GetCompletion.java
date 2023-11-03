@@ -13,7 +13,7 @@ public class GetCompletion implements Command {
 
     private int retcode = 1;    // 0 if no error
 
-    private static String description = "Sends a user prompt to the model and retrieves a response.";
+    private static String description = "send - Sends a user prompt to the model and retrieves a response.";
 
 
     GetCompletion(PchatService ps) {

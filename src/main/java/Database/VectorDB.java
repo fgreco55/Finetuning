@@ -1,5 +1,6 @@
 package Database;
 
+import Utilities.FinetuningUtils;
 import Utilities.Utility;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
@@ -41,7 +42,12 @@ public class VectorDB {
     private int maxmatches;                 // at most, the number of matches found similar to the user prompt
     private final static String DEFAULT_CONFIG = "/Users/fgreco/src/Finetuning/src/main/resources/llm.properties";
     private MilvusServiceClient mc;
+    private FinetuningUtils futil = new FinetuningUtils();
+    private Utility util = new Utility();
 
+    /************************************************************
+     * Constructors
+     ***********************************************************/
     public VectorDB(String h, int p, String dbname) {
         this.host = h;
         this.port = p;
@@ -60,11 +66,8 @@ public class VectorDB {
     public VectorDB(String configfile) {
         Utility util = new Utility();
         Properties prop = null;
-        try {
-            prop = util.getConfigProperties(configfile);
-        } catch (IOException iox) {
-            System.err.println("Cannot find config file [" + configfile + "]");
-        }
+
+        prop = util.getConfigProperties(configfile);
 
         setparams(prop);
     }
@@ -86,6 +89,9 @@ public class VectorDB {
         this.initialized = true;
     }
 
+    /************************************************************
+     * Getters/Setters
+     ***********************************************************/
     public void setMaxSentenceLength(int maxSentenceLength) {
         this.maxSentenceLength = maxSentenceLength;
     }
@@ -97,14 +103,15 @@ public class VectorDB {
         return maxSentenceLength;
     }
 
-    public void setDatabase(String database) {
-        this.database = database;
-    }
-
     /************************************************************
      Currently you can not change the database after you create one dynamically
      ... seems odd to me since RDBMS have been doing this for decades.
      ***********************************************************/
+
+    public void setDatabase(String database) {
+        this.database = database;
+    }
+
     public String getDatabase() {
         return database;
     }
@@ -169,10 +176,8 @@ public class VectorDB {
     public void drop_database(String dbname) throws VectorDBException {
         check_init();
         R<ListCollectionsResponse> lc2 = mc.listCollections(ListCollectionsParam.newBuilder().build());
-        //System.out.println("In drop_database() - Collections in the DB: " + lc2.getData());
 
         R<RpcStatus> response;
-        //System.out.println("DROPPING DATABASE [" + dbname + "]..............");
         DropDatabaseParam dbparam = DropDatabaseParam.newBuilder()
                 .withDatabaseName(dbname)
                 .build();
@@ -207,14 +212,12 @@ public class VectorDB {
         String dbstr = "";
 
         R<ListDatabasesResponse> dbresponse = mc.listDatabases();
-        //System.out.println("Databases in the server==========");
         if (dbresponse.getStatus() != R.Status.Success.getCode()) {
             System.out.println(dbresponse.getMessage());
         } else {
             for (int i = 0; i < dbresponse.getData().getDbNamesCount(); i++) {
                 dbstr = dbresponse.getData().getDbNames(i);
                 dbnames.add(dbstr);
-                //System.out.println(dbstr);
             }
         }
         return dbnames;
@@ -259,6 +262,20 @@ public class VectorDB {
      TBD - change "sentence" to "chunk"... we may not use sentences in the future.
      ***********************************************************/
     public void create_collection(String coll, int vecsize) {
+        create_collection(coll, COLLECTION_DESCRIPTION, vecsize);
+    }
+
+    public void create_collection(String coll) {
+        this.create_collection(coll, COLLECTION_DESCRIPTION, this.getVecsize());
+    }
+
+    /************************************************************
+     * create_collection() - create collection in the VDB
+     * @param coll
+     * @param colldesc
+     * @param vecsize
+     ***********************************************************/
+    public void create_collection(String coll, String colldesc, int vecsize) {
         R<RpcStatus> response = null;
 
         FieldType fieldType1 = FieldType.newBuilder()        // schema for the id of the entry
@@ -280,7 +297,7 @@ public class VectorDB {
 
         CreateCollectionParam createCollectionReq = CreateCollectionParam.newBuilder()      // Create collection
                 .withCollectionName(coll)
-                .withDescription(COLLECTION_DESCRIPTION)
+                .withDescription(colldesc)
                 .withShardsNum(2)
                 .addFieldType(fieldType1)
                 .addFieldType(fieldType2)
@@ -298,7 +315,14 @@ public class VectorDB {
                         .withPartitionName(PARTITION_NAME)
                         .build()
         );
+        createIndex(coll);
+    }
 
+    /************************************************************
+     * createIndex() - create index on vector field
+     * @param coll
+     ************************************************************/
+    public void createIndex(String coll) {
         CreateIndexParam indexParam = CreateIndexParam.newBuilder()
                 .withCollectionName(coll)
                 .withFieldName(FIELD3)
@@ -311,10 +335,6 @@ public class VectorDB {
         if (createIndexR.getStatus() != R.Status.Success.getCode()) {
             System.out.print("***ERROR:  " + createIndexR.getMessage());
         }
-    }
-
-    public void create_collection(String coll) {
-        this.create_collection(coll, this.getVecsize());
     }
 
     /*********************************************************************
@@ -454,6 +474,7 @@ public class VectorDB {
      ***********************************************************/
     public void insert_entry(String coll, String sent, List<Float> vec) {
         List<Integer> ilist = new ArrayList<>();
+        //int max = futil.getHighestID(this, coll);
         ilist.add(1000);                            // arbitrary int  - FIX... need to get largest id from VDB, add 1 -fdg
         List<String> slist = new ArrayList<>();
         slist.add(sent);
@@ -517,7 +538,6 @@ public class VectorDB {
      ***********************************************************/
     public void show_collection_stats(String coll) throws VectorDBException {
         check_init();
-        //System.out.println("GETTING COLLECTION STATS FOR " + coll + " IN [" + MILVUS_DATABASE + "]..............");
 
         if (!collectionExists(coll)) {
             System.err.println("***ERROR:  Collection [" + coll + "] does not exist");
@@ -567,7 +587,6 @@ public class VectorDB {
         } else {
             GetCollStatResponseWrapper wrapper = new GetCollStatResponseWrapper(cresponse.getData());
             rows = wrapper.getRowCount();
-            //System.out.println("collection [" + coll + "] Row count: " + rows);
         }
         return rows;
     }
@@ -588,10 +607,11 @@ public class VectorDB {
      coll - collection name
      query - query filter
      max - limit on how many to return
-     ***********************************************************/
+     ***********************************************************//*
     public List<String> queryDB(String coll, String query, Long max) throws VectorDBException {
         loadCollection(coll);
         List<String> query_output_fields = Arrays.asList(FIELD1, FIELD2);
+        //List<String> query_output_fields = Arrays.asList(FIELD1);
 
         QueryParam queryParam = QueryParam.newBuilder()
                 .withCollectionName(coll)
@@ -618,6 +638,52 @@ public class VectorDB {
         return res;
         //System.out.println(wrapperQuery.getFieldWrapper(FIELD1).getFieldData());
         //System.out.println(wrapperQuery.getFieldWrapper(FIELD2).getFieldData());
+    }*/
+
+    /************************************************************
+     * queryDB()
+     * coll - collection name
+     * query - filter
+     * fields - the target fields you want
+     * max - the max number of rows to return
+     ***********************************************************/
+    public List<String> queryDB(String coll, String query, String fields, Long max) throws VectorDBException {
+        loadCollection(coll);
+        List<String> query_output_fields = util.stringToList(fields);
+
+        QueryParam queryParam = QueryParam.newBuilder()
+                .withCollectionName(coll)
+                .withConsistencyLevel(ConsistencyLevelEnum.EVENTUALLY)
+                .withExpr(query)
+                .withOutFields(query_output_fields)
+                //.withOffset(0L)
+                .withLimit(max)         // max entries returned
+                .build();
+        R<QueryResults> respQuery = mc.query(queryParam);
+        if (respQuery.getStatus() != R.Status.Success.getCode()) {
+            throw new VectorDBException("**ERROR: Query FAILED! " + respQuery.getMessage());
+        }
+
+        QueryResultsWrapper wrapperQuery = new QueryResultsWrapper(respQuery.getData());
+        long numrows = wrapperQuery.getRowCount();
+        System.out.println("query returned " + numrows + " rows.");
+
+        List<String> res = new ArrayList<>();
+        List<QueryResultsWrapper.RowRecord> records = wrapperQuery.getRowRecords();
+        for (QueryResultsWrapper.RowRecord record : records) {
+            int resultSize = query_output_fields.size();
+
+            for (int i = 0; i < query_output_fields.size(); i++) {
+                String field = query_output_fields.get(i);
+                if (resultSize == 1)
+                    res.add(record.get(field).toString());
+                else
+                    res.add(record.get(field).toString() + ":");
+            }
+        }
+        //System.out.println(wrapperQuery.getFieldWrapper(FIELD1).getFieldData());
+        //System.out.println(wrapperQuery.getFieldWrapper(FIELD2).getFieldData())
+        return res;
     }
 
     /************************************************************
@@ -630,7 +696,7 @@ public class VectorDB {
      For our Question/Answer application, we only have one element for this list
      max - maximum number of returned matches
      ***********************************************************/
-    public List<String> searchDB_using_targetvectors(String coll, List<List<Float>> vec, int max) throws VectorDBException{
+    public List<String> searchDB_using_targetvectors(String coll, List<List<Float>> vec, int max) throws VectorDBException {
         loadCollection(coll);
 
         //System.err.println("DEBUG: size of targetVectors: " + vec.size());
@@ -653,7 +719,6 @@ public class VectorDB {
             return new ArrayList<>();
         } else {
             wrapper = new SearchResultsWrapper(resp.getData().getResults());
-            //System.err.println("NUM ROWS: " + wrapper.getRowRecords().size());
             if (wrapper.getRowRecords().size() == 0) {                  // FIX THIS!!! if its 0, it should skip the search...
                 //throw new VectorDBException("No entries match in the database");
                 return new ArrayList<>();
@@ -662,7 +727,9 @@ public class VectorDB {
         }
     }
 
-
+    /******************************************************
+     * getSearchData() - extract the highest scores
+     *****************************************************/
     private List<String> getSearchData(R<SearchResults> resp, int size) {
         SearchResultsWrapper wrapper = new SearchResultsWrapper(resp.getData().getResults());
         List<String> results = new ArrayList<>();
@@ -670,7 +737,7 @@ public class VectorDB {
             List<SearchResultsWrapper.IDScore> scores = wrapper.getIDScore(i);
             for (SearchResultsWrapper.IDScore score : scores) {
                 //System.out.println("[" + score.getScore() + "]" + "[" + score.get(FIELD2) + "]");
-                results.add((String) score.get(FIELD2));
+                results.add((String) score.get(FIELD2));    // the sentence
             }
         }
         return results;
@@ -720,7 +787,7 @@ public class VectorDB {
 
         vdb.collExists(collection);
 
-        List<String> qres = vdb.queryDB(collection, "sentence_id > 25 and sentence_id < 75", Long.parseLong("5"));
+        List<String> qres = vdb.queryDB(collection, "sentence_id > 25 and sentence_id < 75", "sentence_id", 5L);
         qres.forEach(System.out::println);
 
         System.out.println("========================================");
@@ -739,7 +806,7 @@ public class VectorDB {
      max - maximum number of returned matches
      ***********************************************************/
 
-    public List<String> searchDB(String coll, String target, int max) throws VectorDBException{
+    public List<String> searchDB(String coll, String target, int max) throws VectorDBException {
         System.err.println("DUMMY CALL TO SearchDB().  Do NOT use this method... only for testing.");
         loadCollection(coll);
         Random random = new Random();

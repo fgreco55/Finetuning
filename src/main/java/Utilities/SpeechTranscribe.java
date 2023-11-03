@@ -1,7 +1,7 @@
 package Utilities;
 
 /*
- Heavily inspired by Ken Kousen - Null Pointer
+ Heavily inspired by Ken Kousen - Null Pointer   (thx Ken!)
  */
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.HttpPost;
@@ -47,7 +47,8 @@ public class SpeechTranscribe {
     // Only model available as of Fall 2023 is whisper-1
     private final static String MODEL = "whisper-1";
 
-    // Need to understand why we need these prompts and why to rotate them?  -fdg
+    // Need to understand why we need these prompts and why to rotate them?  -fdg   TBD
+    // Do we actually need this list of words?
     public static final String WORD_LIST = String.join(", ",
             List.of("Greco", "NYJavaSIG", "JCP", "GSJUG",
                     "NY Java SIG", "SouJava", "JUnit", "Java", "Kotlin", "Groovy",

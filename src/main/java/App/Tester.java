@@ -55,18 +55,19 @@ public class Tester {
          *  Create some data to insert into the VDB collection
          ****************************************************/
         System.out.println("Populating collection [" + collection + "] ====================================");
-        String fname = "./src/main/resources/faq-nyjavasig.txt";
+        String fname = "./src/main/resources/faq-deepnetts2.txt";
         List<String> sents = util.TextfiletoList(fname);
         System.out.println("DEBUG: Textfile " + fname + " has rows: " + sents.size());
         //sents.forEach(System.out::println);
 
         List<Long> ids = new ArrayList<>();
         List<List<Float>> veclist = new ArrayList<>();
+        int highest = futil.getHighestID(vdb,collection);
         for (int i = 0; i < sents.size(); i++) {
             String s = sents.get(i);
             List<Float> f = model.sendEmbeddingRequest(s);
             veclist.add(f);
-            ids.add(Long.parseLong(1000 + i + ""));         // hard-coded for 1000... not a good idea -fdg
+            ids.add(Long.parseLong(highest + i + ""));
         }
         try {
             vdb.insert_collection(collection, ids, sents, veclist);
@@ -78,10 +79,18 @@ public class Tester {
         /*
           Insert recording... drum roll...
          */
-        futil.populateFromRecording(vdb, collection, model,"/Users/fgreco/src/Finetuning/src/main/resources/20230913-nyjavasig-abstract.mp3");
+        //futil.populateFromRecording(vdb, collection, model,"/Users/fgreco/src/Finetuning/src/main/resources/20230913-nyjavasig-abstract.mp3");
 
         /* Test simple query match  */
-        vdb.queryDB(collection, "sentence_id > 0 and sentence_id < 30000", 10L);
+        List<String> res = vdb.queryDB(collection, "sentence_id > 0 and sentence_id < 500", "sentence_id", 100L);
+
+        String tsent = "Where does Frank live    New Jersey, USA.";
+        List<String> nres = futil.getIDFromSentence(vdb, collection, tsent);
+        System.out.print("These ids have the string [" + tsent + "] :");
+        for (int i = 0; i < nres.size(); i++) {
+            System.out.print(nres.get(i));
+        };
+
 
         Scanner userinput;
 
@@ -127,10 +136,10 @@ public class Tester {
         bigprompt += userquery;*/
 
         String llmresponse = "";
-        llmresponse = m.sendCompletionRequest(userquery,
+        /*llmresponse = m.sendCompletionRequest(userquery,
                 util.TextfiletoString(m.getInstruction_file()),
                 util.listToString(match),
-                "");
+                "");*/
 
         return llmresponse;
     }

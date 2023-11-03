@@ -25,6 +25,8 @@ import static java.util.Map.entry;
  Maybe split Embeddings from Completions?
  Maybe create CompletionRequest, CompletionResults,
  EmbeddingsRequest, EmbeddingsResults?
+
+ Need a better parameters object
  ***********************************************************/
 public class LLM {
     OpenAiService service;              // Needed for Theo Kanning API
@@ -39,18 +41,19 @@ public class LLM {
     private int numCompletionsRequested;    // should typically be 1
     private final static String EMBEDDING_MODEL = "text-embedding-ada-002";
     private final static String COMPLETION_MODEL = "gpt-3.5-turbo";
-    private final static String SPEECH_MODEL = "whisper-1";
+    private final static String SPEECH_MODEL = "whisper-1"; // need speech class -fdg
     private final static String MODERATION_MODEL = "text-moderation-latest";
     private String completion_model = COMPLETION_MODEL;     // default
-    private String embedding_model = EMBEDDING_MODEL;       // default
-    private String moderation_model = MODERATION_MODEL;    // default
+    private String embedding_model = EMBEDDING_MODEL;       // default  - need embedding class -fdg
+    private String moderation_model = MODERATION_MODEL;    // default  - need moderation class -fdg
     private final static int TOKEN_LIMIT = 4096;            // token limit for gpt-3.5-turbo
     private int tokenlimit = TOKEN_LIMIT;                   // max size of the msg packet to the LLM in tokens
     private final static int VEC_SIZE = 1536;               // size of the embedding vector
     private int vector_size = VEC_SIZE;                     // default... dependent on embedding vector length
     private String speech_model = SPEECH_MODEL;
-    private String preamble_file;
-    private String instruction_file;
+    private String preamble_file;                           // IS THIS NECCESSARY?
+    private String instruction_file;                        // The initial System-prompt instructions
+    private String instruction;                             // The System message (initialized from instruction_file)
     private final static String DEFAULT_LANGUAGE = "english";
     private String language = DEFAULT_LANGUAGE;             // what language the LLM should use when conversing with the user;
     private History userHistoryList;
@@ -58,6 +61,7 @@ public class LLM {
     private History systemHistoryList;
     private int historySize;                                // same size for user history and assistant history
     private int webloader_levels;                           // how many recursive levels to descend on a website
+    private Utility util = new Utility();
 
     /************************************************************
      Constructors
@@ -75,13 +79,8 @@ public class LLM {
 
     public LLM(String configfile) throws LLMCompletionException {
         Properties prop = null;
-        Utility util = new Utility();
 
-        try {
-            prop = util.getConfigProperties(configfile);
-        } catch (IOException iox) {
-            System.err.println("Cannot find config file [" + configfile + "]");
-        }
+        prop = util.getConfigProperties(configfile);
 
         this.apikey = prop.getProperty("llmservice.apikey");
         if (this.apikey == (String) null)            // Cannot continue without an API key from LLM provider
@@ -106,7 +105,11 @@ public class LLM {
         this.top = percentSampled;
         this.numCompletionsRequested = numCompletionsRequested;
         this.stream = false;            // currently only allow non-streaming (SSE TBD)
+
         this.preamble_file = pfile;
+        this.instruction_file = ifile;
+        this.instruction = util.TextfiletoString(this.instruction_file);
+
         this.vector_size = vecsize;
         this.language = lang;
 
@@ -116,7 +119,6 @@ public class LLM {
         this.systemHistoryList = new History(10, this.historySize);  // same size for all 3, but use/asst are much bigger
 
         this.webloader_levels = weblevels;
-
         this.service = new OpenAiService(this.apikey, Duration.ofSeconds(this.getTimeout()));
     }
 
@@ -131,8 +133,11 @@ public class LLM {
         this.top = Float.parseFloat(prop.getProperty("llmservice.percentsampled", "1.0"));
         this.numCompletionsRequested = Integer.parseInt(prop.getProperty("llmservice.numcompletions", "1"));
         this.stream = Boolean.parseBoolean(prop.getProperty("llmservice.stream", "false"));
+
         this.preamble_file = prop.getProperty("llmservice.preamble");
         this.instruction_file = prop.getProperty("llmservice.instructions");
+        this.instruction = util.TextfiletoString(this.instruction_file);
+
         this.vector_size = Integer.parseInt(prop.getProperty("llmservice.vector_size", VEC_SIZE + ""));
         this.language = prop.getProperty("llmservice.language", DEFAULT_LANGUAGE);
         this.timeout = Long.parseLong(prop.getProperty("llmservice.timeout", "10"));
@@ -252,12 +257,20 @@ public class LLM {
         this.language = language;
     }
 
-    public String getInstruction_file() {
+    public String getInstructionFile() {
         return instruction_file;
     }
 
-    public void setInstruction_file(String instruction_file) {
+    public void setInstructionFile(String instruction_file) {
         this.instruction_file = instruction_file;
+    }
+
+    public String getInstruction() {
+        return instruction;
+    }
+
+    public void setInstruction(String instruction) {
+        this.instruction = instruction;
     }
 
     public int getVector_size() {
@@ -320,13 +333,14 @@ public class LLM {
         this.historySize = historySize;
     }
 
+
     /************************************************************
      Talk to LLM Methods
      ***********************************************************/
 
-    /*
+    /***************************************************************************************
      * createChatMessageList() - very specific to OpenAI.  Ordering of msgs is important
-     */
+     **************************************************************************************/
     private List<ChatMessage> createChatMessageList(History usermsg, History amsg, History sysmsg, String userprompt) {
         List<ChatMessage> chatMessageList = new ArrayList<>();
         List<String> tlist;
@@ -354,11 +368,14 @@ public class LLM {
         return chatMessageList;
     }
 
+    /***************************************************************************************
+     * sendCompletionRequest() - send history of messages along with user prompt to the model
+     **************************************************************************************/
     public String sendCompletionRequest(History usermsg, History amsg, History sysmsg, String userprompt) {
         String cmodel = getCompletion_model();      // make sure to use correct completion model
         List<String> results = new ArrayList<>();
 
-        List<ChatMessage> msgs = createChatMessageList(usermsg, amsg, sysmsg, userprompt);
+        List<ChatMessage> msgs = createChatMessageList(usermsg, amsg, sysmsg, userprompt);      // add history context to userprompt
 
         ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
                 .model(cmodel)
@@ -373,45 +390,12 @@ public class LLM {
         for (ChatCompletionChoice s : choices) {
             results.add(s.getMessage().getContent().trim());
         }
-        return results.get(0).toString();
+        return results.get(0).toString();       // Return only the first completion - explore later...
     }
-    
-   
-    /*public String sendCompletionRequestXX(String usermsg, String amsg, String sysmsg, String history) {
 
-        Map<String, Integer> logmap = new HashMap<>();
-        // experiment with log bias map
-        *//*logmap = Map.ofEntries(
-                entry("33156", 5),        // machine
-                entry("6975", 5),         // learning
-                entry("21075", 5),        // artificial
-                entry("11478", 5),        // intelligence
-                entry("5655", 5),         // deep
-                entry("4816", 5),         // net
-                entry("2641", 5),          // ts
-                entry("5252", -100),        // las        avoid these tokens
-                entry("56057", -100),        // agna
-                entry("17604", -100),       // cheese
-                entry("45419", -100),       // Cheese
-                entry("4647", -100),        //  mo
-                entry("96982", -100)        // zzarella
-        );*//*
-
-        ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
-                .model(cmodel)
-                .messages(messages)
-                .n(this.numCompletionsRequested)          // should be 1 - future we might return more than 1
-                .maxTokens(this.maxTokensRequested)
-                //.logitBias(new HashMap<>())               // empty map for logit_bias (the likelihood of tokens appearing in the completion)    -100 (ban) to +100 (exclusively show)
-                .logitBias(logmap)                 // empty map for logit_bias (the likelihood of tokens appearing in the completion)    -100 (ban) to +100 (exclusively show)
-                .stream(this.stream)
-                .build();
-*/
-
-    /*
+    /*******************************************************************
      * Ask for embedding vector for a given string
-     */
-
+     ******************************************************************/
     public List<Float> sendEmbeddingRequest(String msg) {
         Utility util = new Utility();
 
@@ -431,25 +415,25 @@ public class LLM {
         return results;
     }
 
-    /*
+    /*******************************************************************
      * getEmbedding() - just a convenience method
-     */
+     ******************************************************************/
     public List<Float> getEmbedding(String str) {
         return sendEmbeddingRequest(str);
     }
 
-    /*
+    /*******************************************************************
      * Display all the completion (responses)
-     */
+     ******************************************************************/
     void displayResponse(List<ChatCompletionChoice> res) {
         for (ChatCompletionChoice s : res) {
             System.out.println(s.getMessage().getContent());
         }
     }
 
-    /*
+    /*******************************************************************
      * Make sure the role is a legal one (maybe OpenAI specific?)
-     */
+     ******************************************************************/
     private boolean isLegalRole(String r) {
         return switch (r) {
             case "user", "assistant", "system" -> true;
@@ -457,9 +441,9 @@ public class LLM {
         };
     }
 
-    /*
+    /*******************************************************************
      * Send request to get an image (need to investigate where these are stored...)
-     */
+     ******************************************************************/
     public String sendImageRequest(String prompt) {
         CreateImageRequest request = CreateImageRequest.builder()
                 .prompt(prompt)
@@ -467,9 +451,9 @@ public class LLM {
         return service.createImage(request).getData().get(0).getUrl();
     }
 
-    /*
+    /*******************************************************************
      * Send request to make sure the requests are appropriate (ie, moderated)
-     */
+     ******************************************************************/
     public boolean sendModerationRequest(String prompt) {
         ModerationRequest moderationRequest = ModerationRequest.builder()
                 .input(prompt)

@@ -14,7 +14,6 @@ public class LoadNote implements Command {
     }
 
     public int execute(List<String> cmd) {
-
         if (cmd.size() > 1) {
             String note = cmd.get(1);
             psvc.loadnote(note);

@@ -22,11 +22,6 @@ public class PchatService {
     private FinetuningUtils futil = new FinetuningUtils();      // name should be PchatFacade, or something like that
     private final static String DEFAULT_CONFIG = "/Users/fgreco/src/Finetuning/src/main/resources/llm.properties";
 
-    public PchatService() {
-        Properties prop = futil.getConfigProperties(DEFAULT_CONFIG);
-        this.openVectorDB(prop);
-        this.openLLM(prop);
-    }
 
     public VectorDB getVdb() {
         return vdb;
@@ -44,6 +39,18 @@ public class PchatService {
         this.model = model;
     }
 
+    /***************************************************************
+     *
+     **************************************************************/
+    public PchatService() {
+        Properties prop = util.getConfigProperties(DEFAULT_CONFIG);
+        this.openVectorDB(prop);
+        this.openLLM(prop);
+    }
+
+    /***************************************************************
+     *
+     **************************************************************/
     public void openLLM(Properties prop) {
         try {
             this.model = new LLM(prop);
@@ -88,7 +95,7 @@ public class PchatService {
     }
 
 
-    public String showcollections() throws VectorDBException{
+    public String showcollections() throws VectorDBException {
         return vdb.show_collections();
     }
 
@@ -118,44 +125,71 @@ public class PchatService {
         return this;
     }
 
+    /*********************************************************************
+     * Load a webpage given a URL
+     ********************************************************************/
     public PchatService loadurl(String urlname) {
         futil.populateFromURL(vdb, vdb.getCollection(), model, urlname);
         vdb.flush_collection(vdb.getCollection());
         return this;
     }
 
+    /*********************************************************************
+     * Load a website given a URL.  Num of levels is in the getWebloader_levels() property
+     ********************************************************************/
     public PchatService loadwebsite(String urlname) {
-            futil.populatefromWebsite(vdb, vdb.getCollection(), model, urlname, 0, getModel().getWebloader_levels());
-            vdb.flush_collection(vdb.getCollection());
-            return this;
-        }
+        futil.populatefromWebsite(vdb, vdb.getCollection(), model, urlname, 0, getModel().getWebloader_levels());
+        vdb.flush_collection(vdb.getCollection());
+        return this;
+    }
+
+    /*********************************************************************
+     * Load a website given a URL and the number of recursive levels
+     ********************************************************************/
+    public PchatService loadwebsite(String urlname, int levels) {
+        futil.populatefromWebsite(vdb, vdb.getCollection(), model, urlname, 0, levels);
+        vdb.flush_collection(vdb.getCollection());
+        return this;
+    }
+
+    /*********************************************************************
+     * Transcribe a recording, parse into sentences, and load into the DB
+     ********************************************************************/
     public PchatService loadrecording(String recpath) {
         futil.populateFromRecording(vdb, vdb.getCollection(), model, recpath);
         vdb.flush_collection(vdb.getCollection());
         return this;
     }
 
+    /*********************************************************************
+     * Load a string into the DB
+     ********************************************************************/
     public PchatService loadnote(String note) {
         futil.populateFromNote(vdb, vdb.getCollection(), model, note);
         vdb.flush_collection(vdb.getCollection());
         return this;
     }
 
+    /*********************************************************************
+     * Primary method for sending a prompt to the LLM and getting a result
+     ********************************************************************/
     public String getCompletion(String request) {
         String answer = "";
 
         try {
-            //answer = futil.getCompletion(model, vdb, vdb.getCollection(), request);
-            answer = futil.getCompletion(model, vdb, vdb.getCollection(), request);      // XXX
+            answer = futil.getCompletion(model, vdb, vdb.getCollection(), request);
         } catch (LLMCompletionException lex) {
             System.err.println("***ERROR: Cannot get completion from the model.");
         } catch (VectorDBException vdbx) {
-            System.err.println("***ERROR: Cannot get completion from the model due to database issue");
+            System.err.println("***ERROR: Cannot get completion from the model due to a database issue");
         }
 
         return answer;
     }
 
+    /*********************************************************************
+     * Set the language for subsequent conversations with the LLM
+     ********************************************************************/
     public PchatService setLanguage(String lang) {
         this.model.setLanguage(lang);
         return this;
@@ -183,6 +217,7 @@ public class PchatService {
         vdb.setCollection(collname);
         return this;
     }
+
     public String getImageURL(String prompt) {
         return futil.getImageURLFromCompletion(model, prompt);
     }
@@ -191,15 +226,31 @@ public class PchatService {
         return futil.isPromptFlagged(model, prompt);
     }
 
-    /*
+    public String getInstruction() {
+        return futil.getInstruction(model);
+    }
+
+    public void setInstruction(String inst) {
+        futil.setInstruction(model, inst);
+    }
+
+    public String getInstructionFile() {
+        return futil.getInstructionFile(model);
+    }
+
+    public void setInstructionFile(String inst) {
+        futil.setInstructionFile(model, inst);
+    }
+
+    public void setInstructionsFromFile(String filename) {
+        futil.setInstructionsFromFile(model, filename);
+    }
+
+    /****************************************************
      * Simple tester
-     */
+     ***************************************************/
     public static void main(String[] args) {
         PchatService ps = new PchatService();
-        //ps.usedatabase("frankdb");              // Should be defaults for db and collection.
-        //ps.usecollection("trialcollection");    // Maybe the collection name should be based on $USER-$DATE ??
-
-        //ps.usecollection("dncollection");
         ps.usedatabase("frankdb")
                 .usecollection("testcollection")
                 .setLanguage("english");
