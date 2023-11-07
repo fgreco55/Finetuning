@@ -31,7 +31,7 @@ public class CommandTester {
             argv = clp.parseCommandLine(cmdline);
             String mycmd = argv.get(0);
 
-            if (commands.containsKey(argv.get(0))) {
+            if (commands.containsKey(mycmd)) {
                 commands.get(mycmd).execute(argv);
             } else {
                 commands.get("send").execute(argv);

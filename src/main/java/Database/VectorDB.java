@@ -268,6 +268,9 @@ public class VectorDB {
     public void create_collection(String coll) {
         this.create_collection(coll, COLLECTION_DESCRIPTION, this.getVecsize());
     }
+    public void create_collection(String coll, String colldesc) {
+        this.create_collection(coll, colldesc, this.getVecsize());
+    }
 
     /************************************************************
      * create_collection() - create collection in the VDB
@@ -308,7 +311,6 @@ public class VectorDB {
         if (response.getStatus() != R.Status.Success.getCode()) {
             System.out.println("***FAILURE: " + response.getMessage());
         }
-
         mc.createPartition(
                 CreatePartitionParam.newBuilder()
                         .withCollectionName(coll)
@@ -340,10 +342,10 @@ public class VectorDB {
     /*********************************************************************
      Populate collection with data
 
+     coll - collection name
      sentences - list of sentences to be inserted into Milvus
      sentence_id - list of sentence ids
      svec - list of vectors, one list for each sentence
-     vecsize - size of the vector array for each element of sentences list (only changes if embedding algo changes)
      ********************************************************************/
     public void insert_collection(String coll, List<Long> sentence_id, List<String> sentences, List<List<Float>> svec)
             throws VectorDBException {
@@ -601,46 +603,6 @@ public class VectorDB {
  ************************************************************/
 
     /************************************************************
-     Query the DB for specific filters   - see search() for finding vector neighbors
-     - currently restricted to "id, sentence, sentence-embedding-vector"
-     as FIELD1, FIELD2, and FIELD3
-     coll - collection name
-     query - query filter
-     max - limit on how many to return
-     ***********************************************************//*
-    public List<String> queryDB(String coll, String query, Long max) throws VectorDBException {
-        loadCollection(coll);
-        List<String> query_output_fields = Arrays.asList(FIELD1, FIELD2);
-        //List<String> query_output_fields = Arrays.asList(FIELD1);
-
-        QueryParam queryParam = QueryParam.newBuilder()
-                .withCollectionName(coll)
-                .withConsistencyLevel(ConsistencyLevelEnum.STRONG)
-                .withExpr(query)
-                .withOutFields(query_output_fields)
-                .withOffset(0L)
-                .withLimit(max)         // max entries returned
-                .build();
-        R<QueryResults> respQuery = mc.query(queryParam);
-        if (respQuery.getStatus() != R.Status.Success.getCode()) {
-            throw new VectorDBException("**ERROR: Query FAILED! " + respQuery.getMessage());
-        }
-
-        QueryResultsWrapper wrapperQuery = new QueryResultsWrapper(respQuery.getData());
-        long numrows = wrapperQuery.getRowCount();
-        System.out.println("query returned " + numrows + " rows.");
-
-        List<String> res = new ArrayList<>();
-        List<QueryResultsWrapper.RowRecord> records = wrapperQuery.getRowRecords();
-        for (QueryResultsWrapper.RowRecord record : records) {
-            res.add(record.toString());
-        }
-        return res;
-        //System.out.println(wrapperQuery.getFieldWrapper(FIELD1).getFieldData());
-        //System.out.println(wrapperQuery.getFieldWrapper(FIELD2).getFieldData());
-    }*/
-
-    /************************************************************
      * queryDB()
      * coll - collection name
      * query - filter
@@ -719,7 +681,7 @@ public class VectorDB {
             return new ArrayList<>();
         } else {
             wrapper = new SearchResultsWrapper(resp.getData().getResults());
-            if (wrapper.getRowRecords().size() == 0) {                  // FIX THIS!!! if its 0, it should skip the search...
+            if (wrapper.getRowRecords().size() == 0) {
                 //throw new VectorDBException("No entries match in the database");
                 return new ArrayList<>();
             }
@@ -728,7 +690,7 @@ public class VectorDB {
     }
 
     /******************************************************
-     * getSearchData() - extract the highest scores
+     * getSearchData() - extract the highest semantic scores
      *****************************************************/
     private List<String> getSearchData(R<SearchResults> resp, int size) {
         SearchResultsWrapper wrapper = new SearchResultsWrapper(resp.getData().getResults());

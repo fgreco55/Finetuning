@@ -27,7 +27,8 @@ public class GetCompletion implements Command {
             for (int i = 0; i < cmd.size(); i++) {
                  big += cmd.get(i) + " ";
             }
-            System.out.println(psvc.getCompletion(big));
+            System.out.println(psvc.getCompletion(big));      // TEMP - non-SSS
+            //psvc.getCompletion(big);                        // TEMP - test SSE here
             return 0;
         }
         return retcode;

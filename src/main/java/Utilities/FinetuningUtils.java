@@ -23,8 +23,8 @@ public class FinetuningUtils {
     private Utility util = new Utility();
     private LoadedResources lresources = new LoadedResources();
 
-
-    public List<Long> createIdList(int num) {
+ // Delete createIdList() soon...
+/*    public List<Long> createIdList(int num) {
         // int START = ... largest id found in the DB + 1...
         int START = 2000;
         List<Long> idlist = new ArrayList<>();
@@ -32,7 +32,7 @@ public class FinetuningUtils {
             idlist.add((long) (START + i));
         }
         return idlist;
-    }
+    }*/
 
     /***********************************************************************************************
      * populatefromNote() - load a string into the VDB
@@ -63,10 +63,6 @@ public class FinetuningUtils {
             return;
         }
 
-        /*for(int i = 0; i < currLevel; i++) {      // show recursion levels
-            System.err.print("+-----> ");
-        }
-        System.err.println("LEVEL: " + currLevel + " URL: " + websiteURL );*/
         if (lresources.alreadyLoaded(websiteURL)) {              // This should be generalized for all resources -fdg
             System.err.println("[" + websiteURL + "] already loaded... skipping");
             return;
@@ -126,7 +122,14 @@ public class FinetuningUtils {
     private void insert_sentences(VectorDB v, String collection, LLM model, List<String> sentences) {
         if (sentences.size() == 0)
             return;
-        int max = getHighestID(v, collection);
+
+        int max = 0;
+        try {
+            if ( v.collectionExists(collection) )
+                max = getHighestID(v, collection);
+        } catch (VectorDBException e) {
+            System.err.println("Collection does not exist... Using 0 as highestID");
+        }
 
         List<Long> ids = new ArrayList<>();
         List<List<Float>> veclist = new ArrayList<>();
@@ -228,14 +231,17 @@ public class FinetuningUtils {
      * Specific query to get largest ID... Milvus should have these types of primitives -fdg
      **********************************************************************************************/
     public int getHighestID(VectorDB vdb, String coll) {
-        int highest;
+        int highest = 0;
         List<String> ids;
         List<Integer> idlist = new ArrayList<>();       // initialize
 
         try {
-           ids = vdb.queryDB(coll, "sentence_id > 0", "sentence_id", 16384L);   // max results
-           idlist = ids.stream().map(Integer::parseInt).collect(Collectors.toList());
-           Collections.sort(idlist, Collections.reverseOrder());
+            ids = vdb.queryDB(coll, "sentence_id > 0", "sentence_id", 16384L);   // max results
+            if (ids.size() == 0)
+                return 0;
+
+            idlist = ids.stream().map(Integer::parseInt).collect(Collectors.toList());
+            Collections.sort(idlist, Collections.reverseOrder());
 
         } catch (VectorDBException vdx) {
             System.err.println("Cannot get sentence_id's");

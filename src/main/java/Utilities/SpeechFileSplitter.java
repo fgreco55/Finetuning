@@ -37,8 +37,7 @@ public class SpeechFileSplitter {
                 long framesInThisFile = Math.min(totalFrames, framesPerChunk);
                 int bytesRead = inputStream.read(buffer, 0, (int) (framesInThisFile * frameSize));
                 if (bytesRead > 0) {
-                    File chunkFile = new File(sourceWavFile.getAbsolutePath().replace(
-                            ".wav", "-%d.wav".formatted(chunkCounter)));
+                    File chunkFile = new File(sourceWavFile.getAbsolutePath().replace(".wav", "-%d.wav".formatted(chunkCounter)));
                     try (var partStream = new AudioInputStream(
                             new ByteArrayInputStream(buffer, 0, bytesRead),
                             format,

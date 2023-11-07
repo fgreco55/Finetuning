@@ -386,12 +386,30 @@ public class LLM {
                 .stream(this.stream)
                 .build();
 
-        List<ChatCompletionChoice> choices = this.service.createChatCompletion(chatCompletionRequest).getChoices();
-        for (ChatCompletionChoice s : choices) {
-            results.add(s.getMessage().getContent().trim());
+        if (this.stream == true) {                      // This code is BROKEN - need to fix
+            service.streamChatCompletion(chatCompletionRequest)
+                    .doOnError(Throwable::printStackTrace)
+                    .blockingForEach(t -> {
+                        showstream(t);
+                    });
+            service.shutdownExecutor();
+        } else {
+            List<ChatCompletionChoice> choices = this.service.createChatCompletion(chatCompletionRequest).getChoices();
+            for (ChatCompletionChoice s : choices) {
+                results.add(s.getMessage().getContent().trim());
+            }
         }
         return results.get(0).toString();       // Return only the first completion - explore later...
     }
+
+    public static void showstream(ChatCompletionChunk t) {
+             List<ChatCompletionChoice> choices = t.getChoices();
+             for (int i = 0; i < choices.size(); i++){
+                 ChatCompletionChoice ccc = choices.get(i);
+                 ChatMessage cm = ccc.getMessage();
+                 System.out.print(cm.getContent());
+             }
+       }
 
     /*******************************************************************
      * Ask for embedding vector for a given string

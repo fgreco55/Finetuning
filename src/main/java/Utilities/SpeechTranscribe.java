@@ -49,12 +49,12 @@ public class SpeechTranscribe {
 
     // Need to understand why we need these prompts and why to rotate them?  -fdg   TBD
     // Do we actually need this list of words?
-    public static final String WORD_LIST = String.join(", ",
+   /* public static final String WORD_LIST = String.join(", ",
             List.of("Greco", "NYJavaSIG", "JCP", "GSJUG",
                     "NY Java SIG", "SouJava", "JUnit", "Java", "Kotlin", "Groovy",
                     "IOException", "RuntimeException", "UncheckedIOException", "UnsupportedAudioFileException",
                     "assertThrows", "assertTrue", "assertEquals", "assertNull", "assertNotNull", "assertThat",
-                    "Spring Boot", "Spring Framework", "Spring Data", "Spring Security"));
+                    "Spring Boot", "Spring Framework", "Spring Data", "Spring Security"));*/
 
     public SpeechTranscribe(String apikey, String model) {
         this.apikey = apikey;
@@ -96,6 +96,7 @@ public class SpeechTranscribe {
             String transcription = transcribeChunk(prompt, file);
             transcriptions = List.of(transcription);
         } else {
+            System.err.println("========================BIG FILE=========================");
             var splitter = new SpeechFileSplitter();
             List<File> chunks = splitter.splitWavFileIntoChunks(file);
             for (File chunk : chunks) {
@@ -122,13 +123,16 @@ public class SpeechTranscribe {
         String key = util.getApikey("/Users/fgreco/src/Finetuning/src/main/resources/llm.properties");
 
         SpeechTranscribe wt = new SpeechTranscribe(key, "whisper-1");
-        String s = wt.transcribe("/Users/fgreco/src/Finetuning/src/main/resources/zoran-groundbreakers.mp3");
+        String s = wt.transcribe("/Users/fgreco/src/Finetuning/src/main/resources/zoran-foojayio.mp3");
         //String s = wt.transcribe("/Users/fgreco/src/Finetuning/src/main/resources/20230913-nyjavasig-abstract.mp3");
 
 
         System.out.println(s);
         System.out.println("====================================================");
-        util.StringtoSentences(s);
+        List<String> speech = util.StringtoSentences(s);
+        for (int i = 0; i < speech.size(); i++) {
+            System.out.printf("%-4d:%s\n", i, speech.get(i));
+        }
     }
 }
 

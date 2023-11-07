@@ -40,7 +40,7 @@ public class PchatService {
     }
 
     /***************************************************************
-     *
+     *   Constructors
      **************************************************************/
     public PchatService() {
         Properties prop = util.getConfigProperties(DEFAULT_CONFIG);
@@ -49,9 +49,10 @@ public class PchatService {
     }
 
     /***************************************************************
-     *
+     *   openLLM() and openVectorDB() should only be called
+     *                                      within this class
      **************************************************************/
-    public void openLLM(Properties prop) {
+    private void openLLM(Properties prop) {
         try {
             this.model = new LLM(prop);
         } catch (LLMCompletionException lex) {
@@ -59,10 +60,13 @@ public class PchatService {
         }
     }
 
-    public void openVectorDB(Properties prop) {
+    private void openVectorDB(Properties prop) {
         this.vdb = new VectorDB(prop);
     }
 
+    /***************************************************************
+     *   system level methods - deals with the database
+     **************************************************************/
     public PchatService usedatabase(String database) {
         try {
             if (!vdb.databaseExists(database)) {
@@ -109,12 +113,40 @@ public class PchatService {
         return util.listToString(dblist);
     }
 
+    public PchatService setDatabase(String dbname) {
+        vdb.setDatabase(dbname);
+        return this;
+    }
+
+    public PchatService setCollection(String collname) {
+        try {
+            if (!vdb.collectionExists(collname)) {
+                vdb.create_collection(collname);
+            }
+        } catch (VectorDBException e) {
+            System.err.println("***ERROR: Cannot set collection [" + collname + "]");
+            throw new RuntimeException(e);
+        }
+
+        vdb.setCollection(collname);
+        return this;
+    }
+    /***************************************************************
+     *   user methods
+     **************************************************************/
+
+    /***************************************************************
+     *   loadtextfile() - load text file into the VDB
+     **************************************************************/
     public PchatService loadtextfile(String filename) {
         futil.populateFromTextfile(vdb, vdb.getCollection(), model, filename);
         vdb.flush_collection(vdb.getCollection());
         return this;
     }
 
+    /***************************************************************
+     *   loadpdf() - load pdf file into the VDB
+     **************************************************************/
     public PchatService loadpdf(String pdfname) {
         try {
             futil.populateFromPDF(vdb, vdb.getCollection(), model, pdfname);
@@ -126,7 +158,7 @@ public class PchatService {
     }
 
     /*********************************************************************
-     * Load a webpage given a URL
+     * Load a webpage given a URL, non-recursive
      ********************************************************************/
     public PchatService loadurl(String urlname) {
         futil.populateFromURL(vdb, vdb.getCollection(), model, urlname);
@@ -135,7 +167,8 @@ public class PchatService {
     }
 
     /*********************************************************************
-     * Load a website given a URL.  Num of levels is in the getWebloader_levels() property
+     * Load a URL recursively (website).  Num of recursive levels is in
+     *                                  the getWebloader_levels() property
      ********************************************************************/
     public PchatService loadwebsite(String urlname) {
         futil.populatefromWebsite(vdb, vdb.getCollection(), model, urlname, 0, getModel().getWebloader_levels());
@@ -154,6 +187,7 @@ public class PchatService {
 
     /*********************************************************************
      * Transcribe a recording, parse into sentences, and load into the DB
+     *   Currently limited to 25MB files (filesplitter is broken)
      ********************************************************************/
     public PchatService loadrecording(String recpath) {
         futil.populateFromRecording(vdb, vdb.getCollection(), model, recpath);
@@ -199,24 +233,6 @@ public class PchatService {
         return this.model.getLanguage();
     }
 
-    public PchatService setDatabase(String dbname) {
-        vdb.setDatabase(dbname);
-        return this;
-    }
-
-    public PchatService setCollection(String collname) {
-        try {
-            if (!vdb.collectionExists(collname)) {
-                vdb.create_collection(collname);
-            }
-        } catch (VectorDBException e) {
-            System.err.println("***ERROR: Cannot set collection [" + collname + "]");
-            throw new RuntimeException(e);
-        }
-
-        vdb.setCollection(collname);
-        return this;
-    }
 
     public String getImageURL(String prompt) {
         return futil.getImageURLFromCompletion(model, prompt);
@@ -287,6 +303,9 @@ public class PchatService {
         //ps.dropcollection("dncollection");
     }
 
+    /*
+     * convenience method for main() test
+     */
     public void simplecompletion(String lang, String prompt) {
         String in, out;
         setLanguage(lang);
