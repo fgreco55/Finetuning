@@ -380,7 +380,7 @@ public class LLM {
         ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
                 .model(cmodel)
                 .messages(msgs)
-                .n(this.numCompletionsRequested)          // typically 1 - but can more > 1
+                .n(this.numCompletionsRequested)          // typically 1 - but can have more > 1
                 .maxTokens(this.maxTokensRequested)
                 .logitBias(new HashMap<>())               // empty map for logit_bias (the likelihood of tokens appearing in the completion)    -100 (ban) to +100 (exclusively show)
                 .stream(this.stream)
