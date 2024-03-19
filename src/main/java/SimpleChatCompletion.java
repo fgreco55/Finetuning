@@ -1,3 +1,7 @@
+/*
+ * SimpleChatCompletion using Theo Kanning's repo
+ */
+
 import com.theokanning.openai.completion.CompletionRequest;
 import com.theokanning.openai.completion.chat.ChatCompletionRequest;
 import com.theokanning.openai.completion.chat.ChatMessage;
