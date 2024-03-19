@@ -53,18 +53,18 @@ public class CommandTester {
         commands.put("instruction", new Instruction(ps));           // System message
         commands.put("inst", new Instruction(ps));                  // alias for "instruction"
         commands.put("instructionfile", new InstructionFile(ps));   // System message File (for debugging)
-        commands.put("instfile", new InstructionFile(ps));            // alias for "instructionfile"
+        commands.put("instfile", new InstructionFile(ps));          // alias for "instructionfile"
         commands.put("language", new Language(ps));
         commands.put("l", new Language(ps));                        // alias for "language"
-        commands.put("loadnote", new LoadNote(ps));
-        commands.put("loadtextfile", new LoadTextfile(ps));
-        commands.put("loadfile", new LoadTextfile(ps));
-        commands.put("loadurl", new LoadURL(ps));
-        commands.put("loadwebsite", new LoadWebsite(ps));
+        commands.put("loadnote", new LoadNote(ps));                 // load a string
+        commands.put("loadtextfile", new LoadTextfile(ps));         // load .TXT or .PDF files
+        commands.put("loadfile", new LoadTextfile(ps));             // alias for loadtextfile
+        commands.put("loadurl", new LoadURL(ps));                   // load just the page given
+        commands.put("loadwebsite", new LoadWebsite(ps));           // recursively load webpages given a starting URL
         commands.put("lw", new LoadWebsite(ps));                    // alias for "loadwebsite"
-        commands.put("list", new List(ps));
+        commands.put("list", new List(ps));                         // list collections and databases
         commands.put("send", new GetCompletion(ps));
-        commands.put("help", new Help(commands));               // doesn't work yet...
+        commands.put("help", new Help(commands));                   // displays this list
         return commands;
     }
 }

@@ -39,12 +39,13 @@ public class Embeddings {
                 if (!cmd.isEmpty()) {
 
                     EmbeddingRequest embeddingRequest = EmbeddingRequest.builder()
-                            .model("text-embedding-ada-002")
+                            .model("text-embedding-3-small")
                             .input(Collections.singletonList(cmd))
                             .build();
 
                     List<Embedding> embeddings = service.createEmbeddings(embeddingRequest).getData();
                     System.out.println("There are " + embeddings.size() + " entries.");
+                    System.out.println("One embedding has " + embeddings.get(0).getEmbedding().size() + " elements.");
                     embeddings.forEach(System.out::println);    // seems to be 1536 elements of the embedding vector
                 }
             }

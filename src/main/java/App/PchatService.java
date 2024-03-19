@@ -43,7 +43,11 @@ public class PchatService {
      *   Constructors
      **************************************************************/
     public PchatService() {
-        Properties prop = util.getConfigProperties(DEFAULT_CONFIG);
+        String configfile = System.getenv ("PCHAT_CONFIG");
+        if (configfile == null)
+            configfile = DEFAULT_CONFIG;
+
+        Properties prop = util.getConfigProperties(configfile);
         this.openVectorDB(prop);
         this.openLLM(prop);
     }
