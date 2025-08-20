@@ -1,4 +1,5 @@
-This project shows how to finetune an LLM to a specific doc set using Java tools.
+This project shows how to get an LLM to understand a specific doc set using Java tools.
+This is an early attempt at understanding context.  It is not true finetuning (ie, changing the weights in the LLM's NN).
 
 There are 5 components to this project.
 
