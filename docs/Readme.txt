@@ -1,3 +1,6 @@
+This repo is not about "fine-tuning" in the formal sense.  This repo was created back in the days where the term "fine-tuning" was used loosely.
+"fine-tuning" now implies changing the weights in the neural network.  This repo does NOT do this.  It was a learning exercise, so many aspects of this repo would be significantly changed today.  Use this repo at your own risk.
+
 This project shows how to get an LLM to understand a specific doc set using Java tools.
 This is an early attempt at understanding context.  It is not true finetuning (ie, changing the weights in the LLM's NN).
 
